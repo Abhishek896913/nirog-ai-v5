@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NirogAI — Video Consult</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--teal:#0AB5A0;--teal-dark:#089486;--ink:#0D1B1A;--ink-mid:#2D4A47;--ink-mute:#6B8F8C;--ink-faint:#E2EDED;--white:#FFFFFF;--bg:#F4FAF9;--green:#10B981;--red:#EF4444;--purple:#7C3AED;}
+html,body{height:100%;font-family:'Plus Jakarta Sans',sans-serif;background:#0a0a0f;color:white;overflow:hidden;}
+
+/* TOPBAR */
+.topbar{position:fixed;top:0;left:0;right:0;height:60px;background:rgba(0,0,0,0.7);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:50;border-bottom:1px solid rgba(255,255,255,0.08);}
+.tb-logo{display:flex;align-items:center;gap:8px;font-family:'Instrument Serif',serif;font-size:18px;color:white;}
+.tb-logo .dot{width:30px;height:30px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;font-size:13px;color:white;}
+.tb-logo em{color:var(--teal);}
+.tb-center{display:flex;align-items:center;gap:10px;}
+.call-status{font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);}
+.rec-dot{width:8px;height:8px;background:var(--red);border-radius:50%;animation:beat 1.5s infinite;}
+@keyframes beat{0%,100%{opacity:1}50%{opacity:.3}}
+.call-timer{font-size:14px;font-weight:700;color:white;font-variant-numeric:tabular-nums;}
+.tb-right{display:flex;align-items:center;gap:8px;}
+.tb-btn{padding:7px 14px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:'Plus Jakarta Sans',sans-serif;}
+.tb-btn.end{background:var(--red);color:white;}
+.tb-btn.outline{background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.15);}
+
+/* VIDEO AREA */
+.video-area{height:100vh;display:flex;flex-direction:column;}
+.video-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px;background:#000;margin-top:60px;}
+.video-cell{position:relative;background:#1a1a2e;overflow:hidden;}
+.video-cell.main{grid-column:1/2;}
+.video-cell.local{grid-column:2/3;}
+video{width:100%;height:100%;object-fit:cover;}
+.video-label{position:absolute;bottom:12px;left:12px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;color:white;}
+.video-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;}
+.vp-avatar{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:32px;color:white;}
+.vp-name{font-size:15px;font-weight:600;color:rgba(255,255,255,0.8);}
+.vp-status{font-size:12px;color:rgba(255,255,255,0.5);}
+.waiting-ring{position:absolute;width:96px;height:96px;border-radius:50%;border:2px solid rgba(10,181,160,0.4);animation:ring 2s ease-out infinite;}
+@keyframes ring{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.5);opacity:0}}
+
+/* SCREEN SHARE OVERLAY */
+.screen-share-area{position:absolute;inset:0;background:#0a0a0f;display:none;z-index:10;}
+.screen-share-area.show{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.screen-canvas{width:100%;height:100%;object-fit:contain;}
+.ss-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:var(--teal);color:white;padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;}
+
+/* CONTROLS */
+.controls{position:fixed;bottom:0;left:0;right:0;height:80px;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;gap:12px;border-top:1px solid rgba(255,255,255,0.07);}
+.ctrl-btn{width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;transition:all .2s;position:relative;}
+.ctrl-btn.normal{background:rgba(255,255,255,0.1);}
+.ctrl-btn.normal:hover{background:rgba(255,255,255,0.2);}
+.ctrl-btn.active{background:var(--teal);}
+.ctrl-btn.danger{background:var(--red);width:60px;height:60px;}
+.ctrl-btn.danger:hover{background:#DC2626;}
+.ctrl-btn.share-btn{background:rgba(124,58,237,0.3);border:1.5px solid rgba(124,58,237,0.5);}
+.ctrl-btn.share-btn.active{background:var(--purple);}
+.ctrl-label{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,0.5);white-space:nowrap;}
+.ctrl-wrap{position:relative;padding-bottom:24px;}
+
+/* SHARE PANEL — Health Cards during call */
+.share-panel{position:fixed;right:0;top:60px;bottom:80px;width:320px;background:#13131f;border-left:1px solid rgba(255,255,255,0.08);overflow-y:auto;transform:translateX(100%);transition:transform .3s ease;z-index:40;}
+.share-panel.open{transform:translateX(0);}
+.sp-header{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;}
+.sp-header h3{font-size:14px;font-weight:700;color:white;}
+.sp-close{background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;}
+.sp-tabs{display:flex;background:rgba(255,255,255,0.05);margin:12px;border-radius:10px;padding:3px;}
+.sp-tab{flex:1;padding:8px;border-radius:8px;border:none;background:transparent;font-size:12px;font-weight:600;cursor:pointer;color:rgba(255,255,255,0.5);font-family:'Plus Jakarta Sans',sans-serif;}
+.sp-tab.active{background:var(--teal);color:white;}
+.sp-content{padding:0 12px 12px;}
+.vitals-card-mini{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer;transition:all .15s;}
+.vitals-card-mini:hover{background:rgba(10,181,160,0.1);border-color:rgba(10,181,160,0.3);}
+.vcm-time{font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:8px;font-weight:600;}
+.vcm-vitals{display:flex;flex-wrap:wrap;gap:5px;}
+.vcm-vital{font-size:11px;font-weight:700;background:rgba(255,255,255,0.08);border-radius:6px;padding:3px 8px;color:rgba(255,255,255,0.85);}
+.vcm-share-btn{width:100%;margin-top:8px;padding:7px;border-radius:8px;background:var(--teal);color:white;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;}
+
+/* SCREEN SHARE CARD DISPLAY */
+.ss-card-display{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:white;border-radius:20px;padding:24px;max-width:500px;width:90%;z-index:60;display:none;}
+.ss-card-display.show{display:block;animation:popIn .3s ease;}
+@keyframes popIn{from{transform:translate(-50%,-50%) scale(.9);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+.ssc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.ssc-title{font-family:'Instrument Serif',serif;font-size:20px;color:#0D1B1A;}
+.ssc-close{background:#F1F5F9;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:14px;color:#6B8F8C;}
+.ssc-time{font-size:12px;color:#6B8F8C;margin-bottom:16px;}
+.ssc-vitals-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+.ssc-vital{background:#F4FAF9;border:1px solid #E2EDED;border-radius:12px;padding:12px;text-align:center;}
+.ssc-vital .val{font-size:22px;font-weight:800;color:#0D1B1A;}
+.ssc-vital .unit{font-size:11px;color:#6B8F8C;}
+.ssc-vital .name{font-size:11px;font-weight:700;color:#2D4A47;margin-top:2px;}
+.ssc-vital .status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:4px;display:inline-block;}
+.ssc-vital .status.ok{background:#D1FAE5;color:#065F46;}
+.ssc-vital .status.warn{background:#FEF3C7;color:#92400E;}
+.ssc-vital .status.high{background:#FEE2E2;color:#991B1B;}
+.ssc-note{background:#F4FAF9;border-radius:10px;padding:10px 14px;font-size:13px;color:#2D4A47;font-style:italic;}
+.ssc-badge{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--teal);margin-bottom:12px;}
+.ssc-badge .dot{width:8px;height:8px;background:var(--teal);border-radius:50%;animation:beat 1.5s infinite;}
+.backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:55;}
+.backdrop.show{display:block;}
+
+.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:200;display:none;}
+
+@media(max-width:600px){.video-grid{grid-template-columns:1fr;}.video-cell.local{position:fixed;bottom:100px;right:12px;width:100px;height:150px;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.5);}.share-panel{width:100%;}}</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+<div class="backdrop" id="backdrop" onclick="closeSscCard()"></div>
+
+<!-- HEALTH CARD POPUP (shown during call) -->
+<div class="ss-card-display" id="sscCard">
+  <div class="ssc-header">
+    <div class="ssc-title">Health Card 🔬</div>
+    <button class="ssc-close" onclick="closeSscCard()">✕ Close</button>
+  </div>
+  <div class="ssc-badge"><div class="dot"></div>Shared during video call</div>
+  <div class="ssc-time" id="sscTime"></div>
+  <div class="ssc-vitals-grid" id="sscVitals"></div>
+  <div class="ssc-note" id="sscNote" style="display:none;"></div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-logo"><div class="dot">N</div>Nirog<em>AI</em></div>
+  <div class="tb-center">
+    <div class="rec-dot" id="recDot" style="display:none;"></div>
+    <div class="call-status" id="callStatus">Ready to connect</div>
+    <div class="call-timer" id="callTimer" style="display:none;">00:00</div>
+  </div>
+  <div class="tb-right">
+    <button class="tb-btn outline" onclick="toggleSharePanel()">🔬 Health Cards</button>
+    <button class="tb-btn end" onclick="endCall()">📞 End Call</button>
+  </div>
+</div>
+
+<!-- VIDEO GRID -->
+<div class="video-area">
+  <div class="video-grid">
+    <!-- Remote / Doctor -->
+    <div class="video-cell main" id="remoteCell">
+      <div class="video-placeholder" id="remotePlaceholder">
+        <div style="position:relative;">
+          <div class="waiting-ring"></div>
+          <div class="vp-avatar" id="remoteAvatar">👨‍⚕️</div>
+        </div>
+        <div class="vp-name" id="remoteName">Waiting for doctor...</div>
+        <div class="vp-status" id="remoteStatus">Share the room link to connect</div>
+      </div>
+      <video id="remoteVideo" autoplay playsinline style="display:none;"></video>
+      <div class="video-label" id="remoteLabel">Doctor</div>
+      <!-- Screen share area -->
+      <div class="screen-share-area" id="screenShareArea">
+        <div class="ss-badge">📡 Health Card Shared</div>
+      </div>
+    </div>
+    <!-- Local / Patient -->
+    <div class="video-cell local" id="localCell">
+      <video id="localVideo" autoplay playsinline muted></video>
+      <div class="video-placeholder" id="localPlaceholder" style="display:none;">
+        <div class="vp-avatar" id="localAvatar">You</div>
+        <div class="vp-name">Camera off</div>
+      </div>
+      <div class="video-label">You</div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <div class="ctrl-wrap">
+    <button class="ctrl-btn normal" id="micBtn" onclick="toggleMic()" title="Toggle Mic">🎤<div class="ctrl-label">Mic</div></button>
+  </div>
+  <div class="ctrl-wrap">
+    <button class="ctrl-btn normal" id="camBtn" onclick="toggleCam()" title="Toggle Camera">📷<div class="ctrl-label">Camera</div></button>
+  </div>
+  <div class="ctrl-wrap">
+    <button class="ctrl-btn share-btn" id="screenBtn" onclick="toggleScreenShare()" title="Share Health Card">📡<div class="ctrl-label">Share Card</div></button>
+  </div>
+  <div class="ctrl-wrap">
+    <button class="ctrl-btn normal" id="chatBtn" onclick="toggleSharePanel()" title="Health Cards Panel">🔬<div class="ctrl-label">Cards</div></button>
+  </div>
+  <div class="ctrl-wrap">
+    <button class="ctrl-btn danger" onclick="endCall()" title="End Call">📞<div class="ctrl-label">End</div></button>
+  </div>
+</div>
+
+<!-- HEALTH CARDS SIDE PANEL -->
+<div class="share-panel" id="sharePanel">
+  <div class="sp-header">
+    <h3>🔬 My Health Cards</h3>
+    <button class="sp-close" onclick="toggleSharePanel()">✕</button>
+  </div>
+  <div style="padding:12px 12px 0;font-size:12px;color:rgba(255,255,255,0.5);">Tap a card to show it on screen during the call</div>
+  <div class="sp-content" id="cardsPanelContent" style="margin-top:8px;">
+    <div style="text-align:center;padding:40px 20px;color:rgba(255,255,255,0.4);font-size:13px;">Loading health cards...</div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://snsmcmxxlsolnkeukyog.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuc21jbXh4bHNvbG5rZXVreW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDY1MTEsImV4cCI6MjA4ODEyMjUxMX0.svnnhqmMTdTZOmdr0TcKi3yRi_hdPeyAUYz0sOOExHY';
+const {createClient}=supabase;
+const sb=createClient(SB_URL,SB_KEY);
+
+let localStream=null;
+let screenStream=null;
+let micOn=true;
+let camOn=true;
+let screenSharing=false;
+let panelOpen=false;
+let callSeconds=0;
+let timerInterval=null;
+let currentUser=null;
+let userCards=[];
+
+window.addEventListener('DOMContentLoaded',async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){window.location.href='/auth';return;}
+  currentUser=session.user;
+  const name=currentUser.user_metadata?.first_name||currentUser.user_metadata?.full_name?.split(' ')[0]||'You';
+  document.getElementById('localAvatar').textContent=name[0].toUpperCase();
+  await startCamera();
+  await loadUserCards();
+});
+
+async function startCamera(){
+  try{
+    localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+    const lv=document.getElementById('localVideo');
+    lv.srcObject=localStream;
+    document.getElementById('localPlaceholder').style.display='none';
+    lv.style.display='block';
+    document.getElementById('callStatus').textContent='Camera ready — share room link';
+    startTimer();
+    document.getElementById('recDot').style.display='block';
+    document.getElementById('callTimer').style.display='block';
+  }catch(e){
+    document.getElementById('callStatus').textContent='Camera access denied';
+    document.getElementById('localPlaceholder').style.display='flex';
+    document.getElementById('localVideo').style.display='none';
+  }
+}
+
+function startTimer(){
+  timerInterval=setInterval(()=>{
+    callSeconds++;
+    const m=String(Math.floor(callSeconds/60)).padStart(2,'0');
+    const s=String(callSeconds%60).padStart(2,'0');
+    document.getElementById('callTimer').textContent=`${m}:${s}`;
+  },1000);
+}
+
+function toggleMic(){
+  micOn=!micOn;
+  if(localStream) localStream.getAudioTracks().forEach(t=>t.enabled=micOn);
+  const btn=document.getElementById('micBtn');
+  btn.textContent=micOn?'🎤':'🔇';
+  btn.className='ctrl-btn '+(micOn?'normal':'active');
+  showToast(micOn?'🎤 Mic on':'🔇 Mic muted');
+}
+
+function toggleCam(){
+  camOn=!camOn;
+  if(localStream) localStream.getVideoTracks().forEach(t=>t.enabled=camOn);
+  const lv=document.getElementById('localVideo');
+  const lp=document.getElementById('localPlaceholder');
+  lv.style.display=camOn?'block':'none';
+  lp.style.display=camOn?'none':'flex';
+  const btn=document.getElementById('camBtn');
+  btn.textContent=camOn?'📷':'🚫';
+  btn.className='ctrl-btn '+(camOn?'normal':'active');
+  showToast(camOn?'📷 Camera on':'🚫 Camera off');
+}
+
+async function toggleScreenShare(){
+  if(!screenSharing){
+    // Instead of screen share, show health card selector
+    toggleSharePanel();
+    showToast('📡 Health card chuno — wo screen pe dikhega');
+  } else {
+    stopScreenShare();
+  }
+}
+
+function stopScreenShare(){
+  screenSharing=false;
+  document.getElementById('screenShareArea').classList.remove('show');
+  const btn=document.getElementById('screenBtn');
+  btn.className='ctrl-btn share-btn';
+  btn.textContent='📡';
+}
+
+async function loadUserCards(){
+  const {data}=await sb.from('nadibox_cards').select('*').eq('user_id',currentUser.id).order('recorded_at',{ascending:false}).limit(20);
+  userCards=data||[];
+  renderCardPanel();
+}
+
+function renderCardPanel(){
+  const el=document.getElementById('cardsPanelContent');
+  if(!userCards.length){
+    el.innerHTML='<div style="text-align:center;padding:30px 16px;color:rgba(255,255,255,0.4);font-size:13px;">No health cards yet.<br>Add NadiBox readings first.</div>';
+    return;
+  }
+  el.innerHTML=userCards.map((c,i)=>{
+    const dt=new Date(c.recorded_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    const vitals=[];
+    if(c.spo2!=null) vitals.push(`SpO₂:${c.spo2}%`);
+    if(c.heart_rate!=null) vitals.push(`HR:${c.heart_rate}`);
+    if(c.bp_systolic!=null) vitals.push(`BP:${c.bp_systolic}/${c.bp_diastolic||'--'}`);
+    if(c.temperature!=null) vitals.push(`${c.temperature}°F`);
+    if(c.blood_sugar!=null) vitals.push(`Sugar:${c.blood_sugar}`);
+    return `<div class="vitals-card-mini" onclick="showCardOnScreen(${i})">
+      <div class="vcm-time">${dt} · ${c.source==='nadibox'?'📡 NadiBox':'✏️ Manual'}</div>
+      <div class="vcm-vitals">${vitals.map(v=>`<span class="vcm-vital">${v}</span>`).join('')}</div>
+      <button class="vcm-share-btn" onclick="event.stopPropagation();showCardOnScreen(${i})">📺 Show to Doctor on Screen</button>
+    </div>`;
+  }).join('');
+}
+
+function showCardOnScreen(idx){
+  const c=userCards[idx];
+  if(!c)return;
+  // Build card popup
+  const dt=new Date(c.recorded_at).toLocaleString('en-IN',{weekday:'short',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('sscTime').textContent=`📅 Recorded: ${dt}`;
+  const vitals=[];
+  if(c.spo2!=null) vitals.push({n:'SpO₂',v:c.spo2,u:'%',s:c.spo2>=95?'ok':c.spo2>=90?'warn':'high'});
+  if(c.heart_rate!=null) vitals.push({n:'Heart Rate',v:c.heart_rate,u:'bpm',s:c.heart_rate>=60&&c.heart_rate<=100?'ok':'warn'});
+  if(c.bp_systolic!=null) vitals.push({n:'Blood Pressure',v:`${c.bp_systolic}/${c.bp_diastolic||'--'}`,u:'mmHg',s:c.bp_systolic<120?'ok':c.bp_systolic<140?'warn':'high'});
+  if(c.temperature!=null) vitals.push({n:'Temperature',v:c.temperature,u:'°F',s:'ok'});
+  if(c.blood_sugar!=null) vitals.push({n:'Blood Sugar',v:c.blood_sugar,u:'mg/dL',s:c.blood_sugar<100?'ok':c.blood_sugar<126?'warn':'high'});
+  const statusLabel={ok:'✓ Normal',warn:'⚠ Watch',high:'🔴 High'};
+  document.getElementById('sscVitals').innerHTML=vitals.map(v=>`<div class="ssc-vital"><div class="val">${v.v}</div><div class="unit">${v.u}</div><div class="name">${v.n}</div><div class="status ${v.s}">${statusLabel[v.s]}</div></div>`).join('');
+  const noteEl=document.getElementById('sscNote');
+  if(c.note){noteEl.textContent='📝 '+c.note;noteEl.style.display='block';}
+  else noteEl.style.display='none';
+  document.getElementById('sscCard').classList.add('show');
+  document.getElementById('backdrop').classList.add('show');
+  // Mark screen share active
+  screenSharing=true;
+  document.getElementById('screenShareArea').classList.add('show');
+  document.getElementById('screenBtn').className='ctrl-btn share-btn active';
+  document.getElementById('screenBtn').textContent='📡';
+  showToast('📺 Health card screen pe dikh raha hai — doctor dekh sakta hai');
+  // Close panel
+  if(panelOpen) toggleSharePanel();
+}
+
+function closeSscCard(){
+  document.getElementById('sscCard').classList.remove('show');
+  document.getElementById('backdrop').classList.remove('show');
+  stopScreenShare();
+}
+
+function toggleSharePanel(){
+  panelOpen=!panelOpen;
+  document.getElementById('sharePanel').classList.toggle('open',panelOpen);
+  document.getElementById('chatBtn').className='ctrl-btn '+(panelOpen?'active':'normal');
+}
+
+function endCall(){
+  if(localStream) localStream.getTracks().forEach(t=>t.stop());
+  if(screenStream) screenStream.getTracks().forEach(t=>t.stop());
+  clearInterval(timerInterval);
+  // Redirect back
+  const isDoctor=window.location.search.includes('patient=');
+  if(confirm('Call end karna chahte ho?')) window.location.href=isDoctor?'/doctor-dashboard':'/dashboard';
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+</script>
+</body>
+</html>

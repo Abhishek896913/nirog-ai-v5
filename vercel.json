@@ -1,0 +1,14 @@
+{
+  "rewrites": [
+    { "source": "/auth", "destination": "/auth.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/fitness", "destination": "/fitness.html" },
+    { "source": "/dr-aanya", "destination": "/dr-aanya.html" },
+    { "source": "/reset-password", "destination": "/reset-password.html" },
+    { "source": "/vitals-cards", "destination": "/vitals-cards.html" },
+    { "source": "/doctor-dashboard", "destination": "/doctor-dashboard.html" },
+    { "source": "/video-consult", "destination": "/video-consult.html" },
+    { "source": "/hospitals", "destination": "/hospitals.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NirogAI — Health Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --teal:#0AB5A0;--teal-dark:#089486;--teal-soft:#E8F8F6;
+  --ink:#0D1B1A;--ink-mid:#2D4A47;--ink-mute:#6B8F8C;--ink-faint:#E2EDED;
+  --white:#FFFFFF;--bg:#F4FAF9;
+  --green:#10B981;--yellow:#F59E0B;--red:#EF4444;--blue:#3B82F6;
+  --sidebar:240px;
+}
+html,body{height:100%;font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--ink);overflow:hidden;}
+.app{display:flex;height:100vh;}
+
+.sidebar{width:var(--sidebar);flex-shrink:0;background:var(--white);border-right:1px solid var(--ink-faint);display:flex;flex-direction:column;padding:24px 0;z-index:10;}
+.sb-logo{display:flex;align-items:center;gap:10px;padding:0 20px 24px;border-bottom:1px solid var(--ink-faint);margin-bottom:16px;}
+.sb-logo .dot{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-size:16px;color:white;font-weight:700;}
+.sb-logo span{font-family:'Instrument Serif',serif;font-size:18px;color:var(--ink);}
+.sb-logo span em{color:var(--teal);font-style:italic;}
+.sb-section{padding:0 12px;margin-bottom:8px;}
+.sb-label{font-size:10px;font-weight:700;color:var(--ink-mute);letter-spacing:.8px;text-transform:uppercase;padding:0 8px;margin-bottom:6px;}
+.sb-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--ink-mid);text-decoration:none;transition:all .15s;}
+.sb-item:hover{background:var(--bg);}
+.sb-item.active{background:var(--teal-soft);color:var(--teal-dark);font-weight:600;}
+.sb-item .icon{width:20px;text-align:center;font-size:16px;}
+.sb-item .badge{margin-left:auto;background:var(--red);color:white;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;}
+.sb-user{margin-top:auto;padding:16px 20px 0;border-top:1px solid var(--ink-faint);}
+.sb-user-row{display:flex;align-items:center;gap:10px;}
+.sb-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;flex-shrink:0;}
+.sb-user-info .name{font-size:13px;font-weight:600;color:var(--ink);}
+.sb-user-info .plan{font-size:11px;color:var(--teal-dark);font-weight:600;}
+
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:var(--white);border-bottom:1px solid var(--ink-faint);position:sticky;top:0;z-index:5;flex-shrink:0;}
+.topbar h1{font-family:'Instrument Serif',serif;font-size:20px;font-weight:400;}
+.topbar p{font-size:12px;color:var(--ink-mute);margin-top:2px;}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.tb-btn{padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;border:none;white-space:nowrap;}
+.tb-btn.outline{background:transparent;border:1.5px solid var(--ink-faint);color:var(--ink-mid);}
+.tb-btn.solid{background:var(--teal);color:white;}
+
+.content{padding:20px 24px;display:flex;flex-direction:column;gap:18px;}
+
+.score-hero{background:linear-gradient(135deg,#0AB5A0,#089486);border-radius:18px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;color:white;}
+.score-hero h2{font-family:'Instrument Serif',serif;font-size:20px;font-weight:400;margin-bottom:4px;}
+.score-hero p{font-size:12px;opacity:.8;margin-bottom:12px;}
+.score-pills{display:flex;flex-wrap:wrap;gap:6px;}
+.score-pill{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:500;}
+.score-right{display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;}
+.score-circle{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.2);border:3px solid rgba(255,255,255,.4);display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.score-num{font-size:26px;font-weight:800;line-height:1;}
+.score-label{font-size:11px;opacity:.8;}
+.score-tag{font-size:12px;background:rgba(255,255,255,.2);padding:4px 12px;border-radius:20px;}
+
+.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.qa-btn{background:var(--white);border-radius:14px;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;border:1.5px solid var(--ink-faint);transition:all .2s;}
+.qa-btn:hover{border-color:var(--teal);transform:translateY(-2px);}
+.qa-icon{font-size:22px;}
+.qa-label{font-size:11px;font-weight:600;color:var(--ink-mid);text-align:center;}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.stat-card{background:var(--white);border-radius:16px;padding:16px;cursor:pointer;border:1.5px solid var(--ink-faint);transition:all .2s;}
+.stat-card:hover{border-color:var(--teal);transform:translateY(-2px);}
+.sc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.sc-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.sc-trend{font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;}
+.sc-trend.up{background:#D1FAE5;color:#059669;}
+.sc-trend.down{background:#FEE2E2;color:#DC2626;}
+.sc-trend.stable{background:#FEF3C7;color:#D97706;}
+.sc-val{font-size:24px;font-weight:800;color:var(--ink);}
+.sc-val span{font-size:13px;font-weight:500;color:var(--ink-mute);margin-left:2px;}
+.sc-name{font-size:12px;font-weight:600;color:var(--ink-mid);margin-top:4px;}
+.sc-sub{font-size:11px;color:var(--ink-mute);margin-top:2px;}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.card{background:var(--white);border-radius:16px;padding:16px;border:1px solid var(--ink-faint);}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.card-title{font-size:13px;font-weight:600;color:var(--ink);}
+.chart-wrap{height:140px;position:relative;}
+
+.logs-card{background:var(--white);border-radius:16px;padding:16px;border:1px solid var(--ink-faint);}
+.log-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--ink-faint);}
+.log-item:last-child{border-bottom:none;}
+.log-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.log-info{flex:1;}
+.log-title{font-size:13px;font-weight:600;}
+.log-sub{font-size:11px;color:var(--ink-mute);}
+.log-val{font-size:14px;font-weight:700;text-align:right;}
+.log-time{font-size:11px;color:var(--ink-mute);text-align:right;}
+.no-logs{text-align:center;padding:24px;color:var(--ink-mute);font-size:13px;}
+.log-del{background:none;border:none;cursor:pointer;color:#CBD5E1;font-size:16px;padding:4px 6px;border-radius:6px;transition:all .15s;flex-shrink:0;}
+.log-del:hover{background:#FEE2E2;color:#DC2626;}
+
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:20px;}
+.modal.show{display:flex;}
+.modal-box{background:var(--white);border-radius:20px;padding:24px;width:100%;max-width:380px;}
+.modal-title{font-family:'Instrument Serif',serif;font-size:20px;margin-bottom:16px;}
+.modal-field{margin-bottom:14px;}
+.modal-field label{font-size:11px;font-weight:700;color:var(--ink-mute);letter-spacing:.5px;display:block;margin-bottom:6px;}
+.modal-field input{width:100%;padding:10px 14px;border:1.5px solid var(--ink-faint);border-radius:10px;font-size:15px;font-family:inherit;outline:none;color:var(--ink);}
+.modal-field input:focus{border-color:var(--teal);}
+.modal-btns{display:flex;gap:10px;margin-top:18px;}
+.modal-cancel{flex:1;padding:11px;border-radius:10px;border:1.5px solid var(--ink-faint);background:transparent;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink-mid);}
+.modal-save{flex:2;padding:11px;border-radius:10px;border:none;background:var(--teal);color:white;font-size:14px;font-weight:700;cursor:pointer;}
+.modal-save:disabled{opacity:.6;cursor:not-allowed;}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0D1B1A;color:white;padding:12px 22px;border-radius:30px;font-size:13px;font-weight:600;z-index:200;display:none;white-space:nowrap;}
+
+
+/* PROFILE MODAL */
+.profile-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:20px;}
+.profile-modal.show{display:flex;}
+.profile-box{background:var(--white);border-radius:20px;padding:24px;width:100%;max-width:360px;}
+.profile-avatar-big{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:white;margin:0 auto 16px;}
+.profile-name{text-align:center;font-size:18px;font-weight:700;color:var(--ink);}
+.profile-email{text-align:center;font-size:12px;color:var(--ink-mute);margin-bottom:20px;}
+.profile-field{margin-bottom:12px;}
+.profile-field label{font-size:11px;font-weight:700;color:var(--ink-mute);letter-spacing:.5px;display:block;margin-bottom:4px;}
+.profile-field input{width:100%;padding:9px 12px;border:1.5px solid var(--ink-faint);border-radius:10px;font-size:13px;font-family:inherit;outline:none;color:var(--ink);}
+.profile-field input:focus{border-color:var(--teal);}
+.profile-actions{display:flex;gap:8px;margin-top:16px;}
+.profile-save{flex:2;padding:10px;background:var(--teal);color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;}
+.profile-logout{flex:1;padding:10px;background:#FEE2E2;color:#DC2626;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;}
+.profile-close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-mute);}
+
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.9);z-index:300;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.spinner{width:36px;height:36px;border:3px solid #B2E8E2;border-top-color:#0AB5A0;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeOut{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(-6px);}}
+
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+  .grid-2{grid-template-columns:1fr;}
+  .score-hero{flex-direction:column;}
+  .content{padding:14px 16px;}
+}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:#6B8F8C;">Loading your health data...</div>
+</div>
+
+<div class="modal" id="logModal">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto;">
+    <!-- TABS -->
+    <div style="display:flex;gap:0;margin-bottom:16px;background:#F1F5F9;border-radius:10px;padding:3px;">
+      <button id="tabLog" onclick="switchTab('log')" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:#0AB5A0;color:white;transition:.2s;">📊 Log Health</button>
+      <button id="tabProfile" onclick="switchTab('profile')" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:#6B8F8C;transition:.2s;">👤 My Profile</button>
+    </div>
+
+    <!-- LOG SECTION -->
+    <div id="sectionLog">
+      <div class="modal-title" id="modalTitle">Log Health</div>
+      <div class="modal-field">
+        <label id="val1Label">VALUE</label>
+        <input type="number" id="val1Input" placeholder="Enter value" inputmode="decimal"/>
+      </div>
+      <div class="modal-field" id="val2Field" style="display:none">
+        <label id="val2Label">DIASTOLIC (mmHg)</label>
+        <input type="number" id="val2Input" placeholder="e.g. 80" inputmode="decimal"/>
+      </div>
+      <div class="modal-field">
+        <label>NOTE (Optional)</label>
+        <input type="text" id="logNote" placeholder="e.g. After exercise, fasting..."/>
+      </div>
+      <div class="modal-btns">
+        <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+        <button class="modal-save" id="saveBtn" onclick="saveLog()">Save Log ✓</button>
+      </div>
+    </div>
+
+    <!-- PROFILE SECTION -->
+    <div id="sectionProfile" style="display:none;">
+      <div class="modal-title">My Profile</div>
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:white;margin:0 auto 8px;" id="pm-avatar">?</div>
+        <div style="font-size:14px;font-weight:700;" id="pm-email">-</div>
+      </div>
+      <div class="modal-field">
+        <label>FULL NAME</label>
+        <input type="text" id="pm-name" placeholder="Apna naam likho"/>
+      </div>
+      <div class="modal-field">
+        <label>PHONE</label>
+        <input type="tel" id="pm-phone" placeholder="10-digit mobile number"/>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="modal-field">
+          <label>AGE</label>
+          <input type="number" id="pm-age" placeholder="e.g. 25"/>
+        </div>
+        <div class="modal-field">
+          <label>BLOOD GROUP</label>
+          <input type="text" id="pm-blood" placeholder="B+, O-, AB+"/>
+        </div>
+      </div>
+      <div class="modal-btns">
+        <button class="modal-cancel" style="background:#FEE2E2;color:#DC2626;" onclick="logout()">🚪 Logout</button>
+        <button class="modal-save" onclick="saveProfileModal()">💾 Save Profile</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- LOG TYPE MENU -->
+<div id="logMenu" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:90;" onclick="closeLogMenu()">
+  <div onclick="event.stopPropagation()" style="position:absolute;bottom:0;left:0;right:0;background:white;border-radius:20px 20px 0 0;padding:20px;">
+    <div style="text-align:center;font-size:13px;font-weight:700;color:#6B8F8C;margin-bottom:16px;letter-spacing:.5px;">WHAT DO YOU WANT TO LOG?</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <button onclick="closeLogMenu();openModal('weight')" style="padding:14px;background:#F0FDF9;border:1.5px solid #B2E8E2;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;color:#0AB5A0;">⚖️ Weight</button>
+      <button onclick="closeLogMenu();openModal('bp')" style="padding:14px;background:#FFF5F5;border:1.5px solid #FCA5A5;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;color:#EF4444;">❤️ Blood Pressure</button>
+      <button onclick="closeLogMenu();openModal('sugar')" style="padding:14px;background:#FFF7ED;border:1.5px solid #FCD34D;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;color:#D97706;">🩸 Blood Sugar</button>
+      <button onclick="closeLogMenu();openModal('steps')" style="padding:14px;background:#F5F3FF;border:1.5px solid #C4B5FD;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;color:#7C3AED;">👟 Steps</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- PROFILE MODAL -->
+<div class="profile-modal" id="profileModal">
+  <div class="profile-box" style="position:relative;">
+    <button class="profile-close" onclick="closeProfile()">✕</button>
+    <div class="profile-avatar-big" id="profileAvatarBig">?</div>
+    <div class="profile-name" id="profileNameBig">Loading...</div>
+    <div class="profile-email" id="profileEmailBig">-</div>
+    <div class="profile-field">
+      <label>FULL NAME</label>
+      <input type="text" id="profileNameInput" placeholder="Your name"/>
+    </div>
+    <div class="profile-field">
+      <label>PHONE</label>
+      <input type="tel" id="profilePhoneInput" placeholder="10-digit number"/>
+    </div>
+    <div class="profile-field">
+      <label>AGE</label>
+      <input type="number" id="profileAgeInput" placeholder="Your age"/>
+    </div>
+    <div class="profile-field">
+      <label>BLOOD GROUP</label>
+      <input type="text" id="profileBloodInput" placeholder="e.g. B+, O-, AB+"/>
+    </div>
+    <div class="profile-actions">
+      <button class="profile-save" onclick="saveProfile()">💾 Save Profile</button>
+      <button class="profile-logout" onclick="logout()">🚪 Logout</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="dot">N</div>
+      <span>Nirog<em>AI</em></span>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Main</div>
+      <a class="sb-item active"><span class="icon">📊</span> Dashboard</a>
+      <a class="sb-item" href="/dr-aanya"><span class="icon">🤖</span> Dr. Aanya <span class="badge">AI</span></a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Log Health</div>
+      <a class="sb-item" onclick="openModal('weight')"><span class="icon">⚖️</span> Weight</a>
+      <a class="sb-item" onclick="openModal('bp')"><span class="icon">❤️</span> Blood Pressure</a>
+      <a class="sb-item" onclick="openModal('sugar')"><span class="icon">🩸</span> Blood Sugar</a>
+      <a class="sb-item" onclick="openModal('steps')"><span class="icon">👟</span> Steps</a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Account</div>
+      <a class="sb-item" onclick="openProfileModal()"><span class="icon">👤</span> Profile & Logout</a>
+    </div>
+    <div class="sb-user">
+      <div class="sb-user-row" onclick="openProfileModal()" style="cursor:pointer;" title="View Profile">
+        <div class="sb-avatar" id="sidebarAvatar">?</div>
+        <div class="sb-user-info">
+          <div class="name" id="sidebarName">Loading...</div>
+          <div class="plan">✅ NirogAI Free · NadiBox Ready</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1>Health Dashboard</h1>
+        <p id="greetingText">Welcome 👋</p>
+      </div>
+      <div class="topbar-right">
+        <button class="tb-btn solid" onclick="location.href='/dr-aanya'">🤖 Dr. Aanya</button>
+        <button class="tb-btn outline" onclick="alert('NadiBox sync coming soon! 🔬')">📡 Sync NadiBox</button>
+        <div id="topbarAvatar" onclick="openProfileModal()" title="My Profile" style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#067A72);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:white;cursor:pointer;flex-shrink:0;box-shadow:0 2px 8px rgba(10,181,160,.35);border:2px solid white;">?</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <div class="score-hero">
+        <div>
+          <h2>Your Health Score</h2>
+          <p>Based on your recent logs and vitals</p>
+          <div class="score-pills" id="scorePills">
+            <span class="score-pill">📊 Log vitals to see insights</span>
+          </div>
+        </div>
+        <div class="score-right">
+          <div class="score-circle">
+            <div class="score-num" id="scoreNum">--</div>
+            <div class="score-label">/ 100</div>
+          </div>
+          <div class="score-tag" id="scoreTag">Log to start</div>
+        </div>
+      </div>
+
+      <div class="quick-grid">
+        <div class="qa-btn" onclick="openModal('weight')"><div class="qa-icon">⚖️</div><div class="qa-label">Log Weight</div></div>
+        <div class="qa-btn" onclick="openModal('bp')"><div class="qa-icon">❤️</div><div class="qa-label">Log BP</div></div>
+        <div class="qa-btn" onclick="openModal('sugar')"><div class="qa-icon">🩸</div><div class="qa-label">Log Sugar</div></div>
+        <div class="qa-btn" onclick="openStepsPanel()"><div class="qa-icon">👟</div><div class="qa-label">Steps (Phone)</div></div>
+        <div class="qa-btn" onclick="location.href='/hospitals'"><div class="qa-icon">🏥</div><div class="qa-label">Book Hospital</div></div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card" onclick="openModal('weight')">
+          <div class="sc-top"><div class="sc-icon" style="background:#E8F8F6;">⚖️</div><span class="sc-trend stable" id="weightTrend">No data</span></div>
+          <div class="sc-val" id="weightVal">--<span>kg</span></div>
+          <div class="sc-name">Body Weight</div>
+          <div class="sc-sub" id="weightSub">Tap to log</div>
+        </div>
+        <div class="stat-card" onclick="openModal('bp')">
+          <div class="sc-top"><div class="sc-icon" style="background:#FEF3C7;">❤️</div><span class="sc-trend stable" id="bpTrend">No data</span></div>
+          <div class="sc-val" id="bpVal">--<span>/--</span></div>
+          <div class="sc-name">Blood Pressure</div>
+          <div class="sc-sub" id="bpSub">Tap to log</div>
+        </div>
+        <div class="stat-card" onclick="openModal('sugar')">
+          <div class="sc-top"><div class="sc-icon" style="background:#FEE2E2;">🩸</div><span class="sc-trend stable" id="sugarTrend">No data</span></div>
+          <div class="sc-val" id="sugarVal">--<span>mg/dL</span></div>
+          <div class="sc-name">Blood Sugar</div>
+          <div class="sc-sub" id="sugarSub">Tap to log</div>
+        </div>
+        <div class="stat-card" onclick="openStepsPanel()" id="stepsCard" style="position:relative;">
+          <div class="sc-top"><div class="sc-icon" style="background:#EDE9FE;">👟</div><span class="sc-trend stable" id="stepsTrend">No data</span></div>
+          <div class="sc-val" id="stepsVal">--<span>steps</span></div>
+          <div class="sc-name">Steps Today</div>
+          <div class="sc-sub" id="stepsSub">Tap to sync phone</div>
+          <div id="stepsLiveTag" style="display:none;position:absolute;top:8px;right:8px;background:#D1FAE5;color:#065F46;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;">📱 LIVE</div>
+        </div>
+
+        <!-- BOOK CONSULTANT CARD -->
+        <div class="stat-card" onclick="location.href='/hospitals'" style="background:linear-gradient(135deg,#0AB5A0,#089486);border-color:transparent;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.08);"></div>
+          <div style="position:absolute;bottom:-10px;left:-10px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,0.06);"></div>
+          <div style="position:relative;z-index:1;">
+            <div style="font-size:26px;margin-bottom:6px;">🏥</div>
+            <div style="font-size:15px;font-weight:800;color:white;line-height:1.2;">Book a<br/>Consultant</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:5px;">Find nearby hospitals</div>
+            <div style="display:inline-block;margin-top:8px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;color:white;">FREE →</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">📈 Weight Trend</span></div>
+          <div class="chart-wrap"><canvas id="weightChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">❤️ BP Trend</span></div>
+          <div class="chart-wrap"><canvas id="bpChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="logs-card">
+        <div class="card-header">
+          <span class="card-title">📋 Recent Health Logs</span>
+          <span style="font-size:11px;color:#6B8F8C;" id="logsCount"></span>
+        </div>
+        <div id="logsList"><div class="no-logs">Loading...</div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://snsmcmxxlsolnkeukyog.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuc21jbXh4bHNvbG5rZXVreW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDY1MTEsImV4cCI6MjA4ODEyMjUxMX0.svnnhqmMTdTZOmdr0TcKi3yRi_hdPeyAUYz0sOOExHY';
+const { createClient } = supabase;
+const sb = createClient(SB_URL, SB_KEY);
+
+let currentUser = null;
+let wChart = null, bChart = null;
+
+// INIT
+window.addEventListener('DOMContentLoaded', async () => {
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = '/auth'; return; }
+  currentUser = session.user;
+
+  // Set user name - profiles table se pehle try karo
+  const email = currentUser.email || '';
+  const hr2 = new Date().getHours();
+  const g = hr2<12?'Good morning':hr2<17?'Good afternoon':'Good evening';
+  
+  let name = 'User';
+  try {
+    // Use maybeSingle() - returns null if no row, no error
+    const { data: prof } = await sb.from('profiles').select('full_name,first_name').eq('id', currentUser.id).maybeSingle();
+    if (prof?.full_name) name = prof.full_name.split(' ')[0];
+    else if (prof?.first_name) name = prof.first_name;
+    else throw new Error('no profile');
+  } catch(e) {
+    if (currentUser.user_metadata?.first_name) name = currentUser.user_metadata.first_name;
+    else if (currentUser.user_metadata?.full_name) name = currentUser.user_metadata.full_name.split(' ')[0];
+    else {
+      const raw = email.split('@')[0].replace(/[0-9_.-]/g,'');
+      if(raw.length > 1) name = raw.charAt(0).toUpperCase() + raw.slice(1);
+    }
+  }
+  
+  document.getElementById('sidebarName').textContent = name;
+  document.getElementById('sidebarAvatar').textContent = name[0].toUpperCase();
+  document.getElementById('topbarAvatar').textContent = name[0].toUpperCase();
+  document.getElementById('greetingText').textContent = `${g}, ${name} 👋`;
+
+  try {
+    await loadData();
+  } catch(e) {
+    console.error('LoadData error:', e);
+  } finally {
+    document.getElementById('loadingOverlay').style.display = 'none';
+  }
+
+  // Auto-start phone step tracking — no popup, runs silently
+  initStepTracking();
+});
+
+async function loadData() {
+  try {
+    const { data: logs, error } = await sb
+      .from('health_logs')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('logged_at', { ascending: false })
+      .limit(30);
+
+    const all = logs || [];
+    updateStatCards(all);
+    updateLogsList(all);
+    updateCharts(all);
+    updateScore(all);
+  } catch(e) {
+    console.error('loadData error:', e);
+    updateStatCards([]);
+    updateLogsList([]);
+    updateScore([]);
+  }
+}
+
+function updateStatCards(logs) {
+  const latest = {};
+  logs.forEach(l => { if (!latest[l.log_type]) latest[l.log_type] = l; });
+
+  if (latest.weight) {
+    document.getElementById('weightVal').innerHTML = `${latest.weight.value1}<span>kg</span>`;
+    document.getElementById('weightSub').textContent = timeAgo(latest.weight.logged_at);
+    setTrend('weightTrend', '✓ Logged', 'up');
+  }
+  if (latest.bp) {
+    const d2 = latest.bp.value2 ? `/${latest.bp.value2}` : '';
+    document.getElementById('bpVal').innerHTML = `${latest.bp.value1}<span>${d2} mmHg</span>`;
+    document.getElementById('bpSub').textContent = timeAgo(latest.bp.logged_at);
+    const s = latest.bp.value1;
+    if (s < 120) setTrend('bpTrend','✓ Normal','up');
+    else if (s < 130) setTrend('bpTrend','↑ Elevated','stable');
+    else setTrend('bpTrend','⚠ High','down');
+  }
+  if (latest.sugar) {
+    document.getElementById('sugarVal').innerHTML = `${latest.sugar.value1}<span>mg/dL</span>`;
+    document.getElementById('sugarSub').textContent = timeAgo(latest.sugar.logged_at);
+    const s = latest.sugar.value1;
+    if (s < 100) setTrend('sugarTrend','✓ Normal','up');
+    else if (s < 126) setTrend('sugarTrend','Pre-diabetic','stable');
+    else setTrend('sugarTrend','⚠ High','down');
+  }
+  if (latest.steps) {
+    const s = parseInt(latest.steps.value1);
+    document.getElementById('stepsVal').innerHTML = `${s.toLocaleString()}<span>steps</span>`;
+    document.getElementById('stepsSub').textContent = timeAgo(latest.steps.logged_at);
+    if (s >= 8000) setTrend('stepsTrend','✓ Goal met!','up');
+    else setTrend('stepsTrend',`${Math.round(s/80)}% of goal`,'stable');
+  }
+}
+
+function setTrend(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = `sc-trend ${type}`;
+}
+
+function updateLogsList(logs) {
+  const el = document.getElementById('logsList');
+  document.getElementById('logsCount').textContent = `${logs.length} total logs`;
+  if (!logs.length) {
+    el.innerHTML = '<div class="no-logs">📋 No logs yet! Tap any card above to start logging your health.</div>';
+    return;
+  }
+  const icons={weight:'⚖️',bp:'❤️',sugar:'🩸',steps:'👟'};
+  const colors={weight:'#E8F8F6',bp:'#FEF3C7',sugar:'#FEE2E2',steps:'#EDE9FE'};
+  const titles={weight:'Weight',bp:'Blood Pressure',sugar:'Blood Sugar',steps:'Steps'};
+  const units={weight:'kg',bp:'mmHg',sugar:'mg/dL',steps:'steps'};
+
+  el.innerHTML = logs.slice(0,15).map(log => {
+    const v = log.log_type==='bp' ? `${log.value1}/${log.value2||'--'} mmHg` : `${log.value1} ${units[log.log_type]}`;
+    return `<div class="log-item" id="log-${log.id}" style="animation:fadeIn .25s ease">
+      <div class="log-icon" style="background:${colors[log.log_type]}">${icons[log.log_type]}</div>
+      <div class="log-info"><div class="log-title">${titles[log.log_type]}</div><div class="log-sub">${log.note||'Manual entry'}</div></div>
+      <div><div class="log-val">${v}</div><div class="log-time">${timeAgo(log.logged_at)}</div></div>
+      <button class="log-del" onclick="deleteLog('${log.id}')" title="Delete">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+function updateCharts(logs) {
+  const teal='#0AB5A0', tealLight='rgba(10,181,160,0.1)';
+  const baseOpts = {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:'#f5f5f5'},ticks:{font:{size:10},color:'#9CA3AF'}},x:{grid:{display:false},ticks:{font:{size:10},color:'#9CA3AF'}}}};
+
+  const wLogs = logs.filter(l=>l.log_type==='weight').slice(0,7).reverse();
+  if (wChart) wChart.destroy();
+  wChart = new Chart(document.getElementById('weightChart'),{
+    type:'line',
+    data:{
+      labels: wLogs.length ? wLogs.map(l=>fmtDate(l.logged_at)) : ['No data yet'],
+      datasets:[{data: wLogs.length ? wLogs.map(l=>l.value1) : [null], borderColor:teal, backgroundColor:tealLight, borderWidth:2.5, pointRadius:4, tension:.4, fill:true}]
+    },
+    options: baseOpts
+  });
+
+  const bLogs = logs.filter(l=>l.log_type==='bp').slice(0,7).reverse();
+  if (bChart) bChart.destroy();
+  bChart = new Chart(document.getElementById('bpChart'),{
+    type:'line',
+    data:{
+      labels: bLogs.length ? bLogs.map(l=>fmtDate(l.logged_at)) : ['No data yet'],
+      datasets:[
+        {label:'Systolic', data: bLogs.length ? bLogs.map(l=>l.value1) : [null], borderColor:'#EF4444', borderWidth:2, pointRadius:3, tension:.4},
+        {label:'Diastolic', data: bLogs.length ? bLogs.map(l=>l.value2||0) : [null], borderColor:'#3B82F6', borderWidth:2, pointRadius:3, tension:.4}
+      ]
+    },
+    options:{...baseOpts,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}}}}
+  });
+}
+
+function updateScore(logs) {
+  if (!logs.length) return;
+  let score = 50; const pills = [];
+  const latest = {};
+  logs.forEach(l=>{ if(!latest[l.log_type]) latest[l.log_type]=l; });
+
+  if (latest.bp) {
+    const s=latest.bp.value1;
+    if(s<120){score+=15;pills.push('✅ BP Normal');}
+    else if(s<130){score+=5;pills.push('⚠️ BP Elevated');}
+    else{pills.push('🔴 BP High');}
+  }
+  if (latest.sugar) {
+    const s=latest.sugar.value1;
+    if(s<100){score+=15;pills.push('✅ Sugar Normal');}
+    else if(s<126){score+=5;pills.push('⚠️ Pre-diabetic');}
+    else{pills.push('🔴 Sugar High');}
+  }
+  if (latest.steps) {
+    const s=parseInt(latest.steps.value1);
+    if(s>=8000){score+=10;pills.push('✅ Active Today');}
+    else{score+=3;pills.push('🟡 Low Activity');}
+  }
+  if (latest.weight){score+=5;pills.push('✅ Weight Tracked');}
+  score=Math.min(score,100);
+
+  document.getElementById('scoreNum').textContent=score;
+  document.getElementById('scoreTag').textContent = score>=80?'🟢 Excellent!':score>=65?'🟡 Good!':'🔴 Needs attention';
+  if(pills.length) document.getElementById('scorePills').innerHTML=pills.map(p=>`<span class="score-pill">${p}</span>`).join('');
+}
+
+// MODAL
+let currentType='';
+const configs={
+  weight:{title:'Log Weight ⚖️',l1:'WEIGHT (kg)',p1:'e.g. 72.5',two:false},
+  bp:{title:'Log Blood Pressure ❤️',l1:'SYSTOLIC (mmHg)',p1:'e.g. 120',l2:'DIASTOLIC (mmHg)',two:true},
+  sugar:{title:'Log Blood Sugar 🩸',l1:'BLOOD SUGAR (mg/dL)',p1:'e.g. 95',two:false},
+  steps:{title:'Log Steps 👟',l1:'STEPS',p1:'e.g. 8000',two:false},
+};
+
+function openModal(type){
+  currentType=type;
+  const c=configs[type];
+  document.getElementById('modalTitle').textContent=c.title;
+  document.getElementById('val1Label').textContent=c.l1;
+  document.getElementById('val1Input').placeholder=c.p1;
+  document.getElementById('val1Input').value='';
+  document.getElementById('val2Input').value='';
+  document.getElementById('logNote').value='';
+  document.getElementById('val2Field').style.display=c.two?'block':'none';
+  if(c.l2) document.getElementById('val2Label').textContent=c.l2;
+  document.getElementById('saveBtn').disabled=false;
+  document.getElementById('saveBtn').textContent='Save Log ✓';
+  document.getElementById('logModal').classList.add('show');
+  setTimeout(()=>document.getElementById('val1Input').focus(),150);
+}
+
+function closeModal(){ document.getElementById('logModal').classList.remove('show'); }
+
+async function saveLog(){
+  const v1=parseFloat(document.getElementById('val1Input').value);
+  const v2=parseFloat(document.getElementById('val2Input').value);
+  const note=document.getElementById('logNote').value.trim();
+  const c=configs[currentType];
+
+  if(!v1||isNaN(v1)){showToast('⚠️ Please enter a valid value');return;}
+  if(c.two&&(!v2||isNaN(v2))){showToast('⚠️ Enter diastolic value too');return;}
+
+  const btn=document.getElementById('saveBtn');
+  btn.disabled=true; btn.textContent='Saving...';
+
+  try {
+    const { error } = await sb.from('health_logs').insert({
+      user_id: currentUser.id,
+      log_type: currentType,
+      value1: v1,
+      value2: c.two ? v2 : null,
+      note: note||null,
+      logged_at: new Date().toISOString()
+    });
+
+    if(error){ showToast('❌ '+error.message); btn.disabled=false; btn.textContent='Save Log ✓'; return; }
+
+    closeModal();
+    showToast('✅ Saved! Dashboard updating...');
+    await loadData(); // Reload all data fresh from Supabase
+
+  } catch(e) {
+    showToast('❌ Network error. Try again.');
+    btn.disabled=false; btn.textContent='Save Log ✓';
+  }
+}
+
+async function deleteLog(id) {
+  if(!confirm('Ye log delete karna chahte ho?')) return;
+  const { error } = await sb.from('health_logs').delete().eq('id', id).eq('user_id', currentUser.id);
+  if(error){ showToast('❌ Delete failed'); return; }
+  // Remove from UI instantly
+  const el = document.getElementById('log-'+id);
+  if(el) { el.style.animation='fadeOut .2s ease'; setTimeout(()=>el.remove(), 200); }
+  showToast('🗑️ Log deleted!');
+  // Reload data to update stats and charts
+  setTimeout(() => loadData(), 500);
+}
+
+function switchTab(tab) {
+  const isLog = tab === 'log';
+  document.getElementById('sectionLog').style.display = isLog ? 'block' : 'none';
+  document.getElementById('sectionProfile').style.display = isLog ? 'none' : 'block';
+  document.getElementById('tabLog').style.background = isLog ? '#0AB5A0' : 'transparent';
+  document.getElementById('tabLog').style.color = isLog ? 'white' : '#6B8F8C';
+  document.getElementById('tabProfile').style.background = isLog ? 'transparent' : '#0AB5A0';
+  document.getElementById('tabProfile').style.color = isLog ? '#6B8F8C' : 'white';
+  if(!isLog) loadProfileModal();
+}
+
+async function loadProfileModal() {
+  const email = currentUser.email || '';
+  document.getElementById('pm-email').textContent = email;
+  document.getElementById('pm-avatar').textContent = (currentUser.user_metadata?.full_name || email)[0].toUpperCase();
+  
+  // Load from profiles table
+  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single().catch(()=>({data:null}));
+  if(data) {
+    document.getElementById('pm-name').value = data.full_name || '';
+    document.getElementById('pm-phone').value = data.phone || '';
+    document.getElementById('pm-age').value = data.age || '';
+    document.getElementById('pm-blood').value = data.blood_group || '';
+  } else {
+    document.getElementById('pm-name').value = currentUser.user_metadata?.full_name || '';
+    document.getElementById('pm-phone').value = currentUser.user_metadata?.phone || '';
+  }
+}
+
+async function saveProfileModal() {
+  const name = document.getElementById('pm-name').value.trim();
+  const phone = document.getElementById('pm-phone').value.trim();
+  const age = document.getElementById('pm-age').value;
+  const blood = document.getElementById('pm-blood').value.trim();
+  
+  if(!name) { showToast('❌ Naam daalo!'); return; }
+  
+  await sb.auth.updateUser({ data: { full_name: name, phone } });
+  await sb.from('profiles').upsert({
+    id: currentUser.id, full_name: name,
+    first_name: name.split(' ')[0], phone,
+    age: age ? parseInt(age) : null,
+    blood_group: blood || null,
+    updated_at: new Date().toISOString()
+  });
+  
+  // Update dashboard name
+  const firstName = name.split(' ')[0];
+  document.getElementById('sidebarName').textContent = firstName;
+  document.getElementById('sidebarAvatar').textContent = firstName[0].toUpperCase();
+  document.getElementById('topbarAvatar').textContent = firstName[0].toUpperCase();
+  const hr = new Date().getHours();
+  const g = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  document.getElementById('greetingText').textContent = `${g}, ${firstName} 👋`;
+  document.getElementById('pm-avatar').textContent = firstName[0].toUpperCase();
+  
+  showToast('✅ Profile save ho gaya!');
+  closeModal();
+}
+
+function openProfileModal() {
+  // Use the separate profile modal (profileModal)
+  const name = currentUser.user_metadata?.full_name || currentUser.user_metadata?.first_name || currentUser.email.split('@')[0];
+  const email = currentUser.email;
+  const initial = name[0].toUpperCase();
+  
+  // Update avatar initial
+  document.getElementById('profileAvatarBig').textContent = initial;
+  document.getElementById('profileNameBig').textContent = name.split(' ')[0];
+  document.getElementById('profileEmailBig').textContent = email;
+  document.getElementById('profileNameInput').value = currentUser.user_metadata?.full_name || name;
+  document.getElementById('profilePhoneInput').value = currentUser.user_metadata?.phone || '';
+  
+  // Load extra profile data
+  sb.from('profiles').select('*').eq('id', currentUser.id).maybeSingle().then(({data}) => {
+    if(data) {
+      if(data.age) document.getElementById('profileAgeInput').value = data.age;
+      if(data.blood_group) document.getElementById('profileBloodInput').value = data.blood_group;
+      if(data.full_name) {
+        document.getElementById('profileNameInput').value = data.full_name;
+        document.getElementById('profileNameBig').textContent = data.full_name.split(' ')[0];
+        document.getElementById('profileAvatarBig').textContent = data.full_name[0].toUpperCase();
+      }
+    }
+  });
+  document.getElementById('profileModal').classList.add('show');
+}
+
+async function logout(){ await sb.auth.signOut(); window.location.href='/auth'; }
+
+function timeAgo(ts){
+  if(!ts) return '';
+  const d=new Date(ts), now=new Date(), diff=now-d;
+  if(diff<60000) return 'Just now';
+  if(diff<3600000) return Math.floor(diff/60000)+' min ago';
+  if(diff<86400000) return Math.floor(diff/3600000)+' hr ago';
+  return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+}
+function fmtDate(ts){ return new Date(ts).toLocaleDateString('en-IN',{day:'numeric',month:'short'}); }
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.style.display='block';
+  setTimeout(()=>t.style.display='none',3000);
+}
+
+
+// ── PROFILE ──
+function openProfile() {
+  const name = currentUser.user_metadata?.first_name || currentUser.email.split('@')[0];
+  const email = currentUser.email;
+  const initial = name[0].toUpperCase();
+  document.getElementById('profileAvatarBig').textContent = initial;
+  document.getElementById('profileNameBig').textContent = name;
+  document.getElementById('profileEmailBig').textContent = email;
+  document.getElementById('profileNameInput').value = currentUser.user_metadata?.full_name || name;
+  document.getElementById('profilePhoneInput').value = currentUser.user_metadata?.phone || '';
+  
+  // Load from profiles table
+  sb.from('profiles').select('*').eq('id', currentUser.id).single().then(({data}) => {
+    if(data) {
+      if(data.age) document.getElementById('profileAgeInput').value = data.age;
+      if(data.blood_group) document.getElementById('profileBloodInput').value = data.blood_group;
+    }
+  });
+  document.getElementById('profileModal').classList.add('show');
+}
+
+function closeProfile() { document.getElementById('profileModal').classList.remove('show'); }
+
+async function saveProfile() {
+  const name = document.getElementById('profileNameInput').value.trim();
+  const phone = document.getElementById('profilePhoneInput').value.trim();
+  const age = document.getElementById('profileAgeInput').value;
+  const blood = document.getElementById('profileBloodInput').value.trim();
+
+  // Update auth metadata
+  await sb.auth.updateUser({ data: { full_name: name, phone } });
+  
+  // Upsert profiles table
+  await sb.from('profiles').upsert({
+    id: currentUser.id,
+    full_name: name,
+    phone,
+    age: age || null,
+    blood_group: blood || null,
+    updated_at: new Date().toISOString()
+  });
+
+  // Update sidebar
+  document.getElementById('sidebarName').textContent = name.split(' ')[0];
+  document.getElementById('sidebarAvatar').textContent = name[0].toUpperCase();
+  document.getElementById('profileAvatarBig').textContent = name[0].toUpperCase();
+  document.getElementById('profileNameBig').textContent = name;
+
+  showToast('✅ Profile saved!');
+  closeProfile();
+}
+
+document.getElementById('profileModal').addEventListener('click', e => {
+  if(e.target === document.getElementById('profileModal')) closeProfile();
+});
+
+document.getElementById('logModal').addEventListener('click',e=>{
+  if(e.target===document.getElementById('logModal')) closeModal();
+});
+
+// ═══════════════════════════════════════════════════════
+// PHONE STEPS — AUTO BACKGROUND TRACKING (no popup)
+// ═══════════════════════════════════════════════════════
+let stepCount = 0;
+let lastMag = null;
+let lastPeak = false;
+let stepSaved = false;
+let stepSaveTimer = null;
+const STEP_THRESHOLD = 1.8; // sensitivity
+const STEP_MIN_GAP = 250;   // ms between steps
+let lastStepTime = 0;
+
+// Called from DOMContentLoaded — silently starts tracking
+async function initStepTracking() {
+  if (typeof DeviceMotionEvent === 'undefined') {
+    updateStepsUI(null, 'no-sensor');
+    return;
+  }
+  // iOS needs permission — show a small toast, not a modal
+  if (typeof DeviceMotionEvent.requestPermission === 'function') {
+    try {
+      const res = await DeviceMotionEvent.requestPermission();
+      if (res === 'granted') {
+        startSilentTracking();
+      } else {
+        updateStepsUI(null, 'denied');
+      }
+    } catch(e) {
+      updateStepsUI(null, 'denied');
+    }
+  } else {
+    // Android — start immediately, no permission needed
+    startSilentTracking();
+  }
+}
+
+function startSilentTracking() {
+  // Show live badge on steps card
+  document.getElementById('stepsLiveTag').style.display = 'block';
+  document.getElementById('stepsSub').textContent = '📱 Phone se live tracking';
+  window.addEventListener('devicemotion', onMotion, { passive: true });
+}
+
+function onMotion(e) {
+  const acc = e.accelerationIncludingGravity;
+  if (!acc || acc.x == null) return;
+  const mag = Math.sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z);
+  if (lastMag === null) { lastMag = mag; return; }
+  const diff = mag - lastMag;
+  const now = Date.now();
+  // Peak detection — step when diff crosses threshold upward then downward
+  if (!lastPeak && diff > STEP_THRESHOLD && (now - lastStepTime) > STEP_MIN_GAP) {
+    lastPeak = true;
+    stepCount++;
+    lastStepTime = now;
+    updateStepsUI(stepCount, 'live');
+    scheduleAutoSave();
+  } else if (lastPeak && diff < -STEP_THRESHOLD) {
+    lastPeak = false;
+  }
+  lastMag = mag;
+}
+
+function updateStepsUI(count, status) {
+  const valEl  = document.getElementById('stepsVal');
+  const subEl  = document.getElementById('stepsSub');
+  const tagEl  = document.getElementById('stepsLiveTag');
+  const trendEl = document.getElementById('stepsTrend');
+
+  if (status === 'live' && count !== null) {
+    valEl.innerHTML = `${count.toLocaleString()}<span>steps</span>`;
+    subEl.textContent = '📱 Phone se live';
+    tagEl.style.display = 'block';
+    if (count >= 8000) setTrend('stepsTrend','✓ Goal!','up');
+    else if (count > 0) setTrend('stepsTrend',`${Math.round(count/80)}% goal`,'stable');
+  } else if (status === 'no-sensor') {
+    subEl.textContent = 'Tap to log manually';
+    tagEl.style.display = 'none';
+  } else if (status === 'denied') {
+    subEl.textContent = 'Tap to log manually';
+    tagEl.style.display = 'none';
+  }
+}
+
+// Auto-save to Supabase every 2 minutes silently
+function scheduleAutoSave() {
+  clearTimeout(stepSaveTimer);
+  stepSaveTimer = setTimeout(async () => {
+    if (stepCount > 0 && currentUser) {
+      try {
+        // Check if today's steps entry already exists
+        const today = new Date().toISOString().split('T')[0];
+        const { data: existing } = await sb.from('health_logs')
+          .select('id').eq('user_id', currentUser.id)
+          .eq('log_type','steps').gte('logged_at', today+'T00:00:00')
+          .maybeSingle();
+
+        if (existing) {
+          // Update existing record
+          await sb.from('health_logs').update({
+            value1: stepCount,
+            note: 'Phone sensor — auto updated',
+            logged_at: new Date().toISOString()
+          }).eq('id', existing.id);
+        } else {
+          // Insert new
+          await sb.from('health_logs').insert({
+            user_id: currentUser.id,
+            log_type: 'steps',
+            value1: stepCount,
+            note: 'Phone sensor — auto saved',
+            logged_at: new Date().toISOString()
+          });
+        }
+        showToast(`👟 ${stepCount.toLocaleString()} steps auto-saved`);
+      } catch(e) { console.warn('Steps save failed:', e); }
+    }
+  }, 2 * 60 * 1000); // 2 minutes
+}
+
+function openStepsPanel() {
+  document.getElementById('stepsManualModal').classList.add('show');
+  document.getElementById('stepsModalCount').textContent = stepCount.toLocaleString();
+  document.getElementById('stepsModalSource').textContent = stepCount > 0 ? 'Phone sensor se' : 'Abhi chal raha hai...';
+  document.getElementById('manualStepsInput').value = stepCount > 0 ? stepCount : '';
+}
+function closeStepsManual() {
+  document.getElementById('stepsManualModal').classList.remove('show');
+}
+async function saveManualSteps() {
+  const val = parseInt(document.getElementById('manualStepsInput').value);
+  if (!val || val < 1) { showToast('⚠️ Valid steps number daalo'); return; }
+  stepCount = val;
+  updateStepsUI(val, 'live');
+  const { error } = await sb.from('health_logs').insert({
+    user_id: currentUser.id, log_type: 'steps', value1: val,
+    note: 'Manually entered', logged_at: new Date().toISOString()
+  });
+  if (error) { showToast('❌ ' + error.message); return; }
+  showToast(`✅ ${val.toLocaleString()} steps saved!`);
+  closeStepsManual();
+  await loadData();
+}
+</script>
+
+<!-- STEPS MANUAL ENTRY (small, simple) -->
+<div class="modal" id="stepsManualModal" style="align-items:flex-end;">
+  <div style="background:white;border-radius:20px 20px 0 0;padding:20px 24px;width:100%;max-width:480px;margin:0 auto;">
+    <div style="width:36px;height:4px;background:#E2EDED;border-radius:2px;margin:0 auto 16px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-family:'Instrument Serif',serif;font-size:18px;">👟 Steps</div>
+      <button onclick="closeStepsManual()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#6B8F8C;">✕</button>
+    </div>
+    <div id="stepsAutoInfo" style="background:#F4FAF9;border:1px solid #B2E8E2;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#2D4A47;line-height:1.5;">
+      📱 <b>Phone sensor chal raha hai</b> — steps apne aap count ho rahe hain.<br/>
+      <span style="font-size:11px;color:#6B8F8C;">Ya niche manually bhi daal sakte ho.</span>
+    </div>
+    <div style="background:#E8F8F6;border-radius:12px;padding:14px;text-align:center;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:#6B8F8C;letter-spacing:.4px;margin-bottom:4px;">CURRENT STEPS</div>
+      <div style="font-family:'Instrument Serif',serif;font-size:42px;color:#0AB5A0;" id="stepsModalCount">0</div>
+      <div style="font-size:11px;color:#6B8F8C;margin-top:2px;" id="stepsModalSource">Phone sensor</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <input type="number" id="manualStepsInput" placeholder="Manual steps daalo" style="flex:1;padding:11px 13px;border:1.5px solid #E2EDED;border-radius:11px;font-size:14px;outline:none;font-family:'Plus Jakarta Sans',sans-serif;"/>
+      <button onclick="saveManualSteps()" style="padding:11px 18px;background:#0AB5A0;color:white;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Save</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>alka — India's First AI-Powered Health Platform</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --teal:#0AB5A0;--teal-dark:#089486;--teal-soft:#E8F8F6;--teal-mid:#B2E8E2;
+  --ink:#0D1B1A;--ink-mid:#2D4A47;--ink-mute:#6B8F8C;--ink-faint:#E2EDED;
+  --white:#FFFFFF;--bg:#F4FAF9;
+  --green:#10B981;--yellow:#F59E0B;--red:#EF4444;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--white);color:var(--ink);overflow-x:hidden;}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;height:68px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--ink-faint);transition:box-shadow .3s;}
+nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.07);}
+.nav-logo{display:flex;align-items:center;gap:10px;}
+.nav-logo .dot{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:16px;color:white;box-shadow:0 4px 12px rgba(10,181,160,0.3);}
+.nav-logo span{font-family:'Instrument Serif',serif;font-size:20px;color:var(--ink);letter-spacing:-.3px;}
+.nav-logo span em{color:var(--teal);font-style:italic;}
+.nav-links{display:flex;align-items:center;gap:28px;}
+.nav-links a{font-size:13.5px;color:var(--ink-mid);text-decoration:none;font-weight:500;transition:color .2s;}
+.nav-links a:hover{color:var(--teal);}
+.nav-cta{padding:9px 22px;background:var(--teal);color:white;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;transition:all .2s;box-shadow:0 4px 12px rgba(10,181,160,0.25);}
+.nav-cta:hover{background:var(--teal-dark);transform:translateY(-1px);}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:100px 5% 60px;background:linear-gradient(180deg,var(--teal-soft) 0%,var(--white) 60%);}
+.hero-badge{display:inline-flex;align-items:center;gap:7px;background:var(--white);border:1.5px solid var(--teal-mid);border-radius:30px;padding:6px 16px;font-size:12px;font-weight:600;color:var(--teal-dark);margin-bottom:28px;box-shadow:0 2px 8px rgba(10,181,160,0.1);animation:fadeDown .6s ease both;}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+.hero-badge .pulse{width:7px;height:7px;background:var(--green);border-radius:50%;animation:beat 2s infinite;}
+@keyframes beat{0%,100%{transform:scale(1)}50%{transform:scale(1.4)}}
+.hero h1{font-family:'Instrument Serif',serif;font-size:clamp(38px,6vw,72px);line-height:1.1;letter-spacing:-.5px;color:var(--ink);margin-bottom:24px;animation:riseIn .7s .1s cubic-bezier(.34,1.2,.64,1) both;}
+@keyframes riseIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.hero h1 em{color:var(--teal);font-style:italic;}
+.hero h1 span{display:block;}
+.hero p{font-size:clamp(15px,2vw,18px);color:var(--ink-mid);line-height:1.7;max-width:580px;margin:0 auto 40px;animation:riseIn .7s .2s cubic-bezier(.34,1.2,.64,1) both;}
+.hero-actions{display:flex;flex-direction:column;align-items:center;gap:16px;animation:riseIn .7s .3s both;}
+.waitlist-form{display:flex;gap:10px;width:100%;max-width:460px;}
+.waitlist-form input{flex:1;padding:14px 18px;border:1.5px solid var(--ink-faint);border-radius:12px;font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;transition:border-color .2s;background:var(--white);}
+.waitlist-form input:focus{border-color:var(--teal);}
+.waitlist-form input::placeholder{color:var(--ink-mute);}
+.join-btn{padding:14px 24px;background:var(--teal);color:white;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;white-space:nowrap;transition:all .2s;box-shadow:0 4px 16px rgba(10,181,160,0.3);}
+.join-btn:hover{background:var(--teal-dark);transform:translateY(-1px);}
+.hero-sub{font-size:12px;color:var(--ink-mute);}
+.hero-sub b{color:var(--teal-dark);}
+.success-msg{display:none;background:var(--teal-soft);border:1.5px solid var(--teal-mid);border-radius:12px;padding:14px 20px;font-size:14px;color:var(--teal-dark);font-weight:600;max-width:460px;width:100%;text-align:center;}
+
+/* HERO VISUAL — NadiBox vitals card */
+.hero-visual{margin-top:56px;position:relative;width:100%;max-width:700px;animation:riseIn .8s .4s both;}
+.vitals-preview{background:var(--white);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.1),0 4px 16px rgba(10,181,160,0.1);border:1px solid var(--ink-faint);overflow:hidden;}
+.vp-header{background:var(--white);border-bottom:1px solid var(--ink-faint);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;}
+.vp-left{display:flex;align-items:center;gap:10px;}
+.vp-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:15px;color:white;flex-shrink:0;}
+.vp-name{font-size:13px;font-weight:700;color:var(--ink);}
+.vp-status{font-size:11px;color:var(--green);font-weight:600;}
+.vp-device{font-size:11px;color:var(--ink-mute);background:var(--bg);padding:4px 10px;border-radius:20px;border:1px solid var(--ink-faint);}
+.vp-body{padding:20px;background:var(--bg);display:flex;flex-direction:column;gap:14px;}
+.vitals-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.vital-chip{background:var(--white);border:1px solid var(--ink-faint);border-radius:12px;padding:12px;text-align:center;}
+.vital-chip .val{font-family:'Instrument Serif',serif;font-size:22px;color:var(--ink);line-height:1;}
+.vital-chip .val.ok{color:var(--green);}
+.vital-chip .val.warn{color:var(--yellow);}
+.vital-chip .lbl{font-size:10px;color:var(--ink-mute);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+.vp-chat{display:flex;flex-direction:column;gap:10px;}
+.vp-msg{display:flex;gap:8px;align-items:flex-end;}
+.vp-msg.u{flex-direction:row-reverse;}
+.cp-bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;max-width:80%;}
+.vp-msg.ai .cp-bubble{background:var(--white);border:1px solid var(--ink-faint);border-radius:4px 12px 12px 12px;color:var(--ink);}
+.vp-msg.u .cp-bubble{background:var(--teal);border-radius:12px 4px 12px 12px;color:white;}
+.cp-risk{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(16,185,129,.1);color:#059669;border:1px solid rgba(16,185,129,.2);border-radius:16px;font-size:11px;font-weight:600;margin-top:6px;}
+
+/* STATS */
+.stats{padding:60px 5%;background:var(--white);}
+.stats-inner{max-width:900px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:2px;background:var(--ink-faint);border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);}
+.stat-item{background:var(--white);padding:28px 24px;text-align:center;}
+.stat-num{font-family:'Instrument Serif',serif;font-size:36px;color:var(--teal);line-height:1;}
+.stat-label{font-size:12.5px;color:var(--ink-mute);margin-top:6px;line-height:1.4;}
+
+/* NADIBOX SECTION */
+.nadibox-section{background:linear-gradient(135deg,#0D1B1A 0%,#1a3330 100%);padding:80px 5%;color:white;}
+.nadibox-inner{max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;}
+.nadibox-tag{display:inline-block;background:rgba(10,181,160,0.2);color:var(--teal);border:1px solid rgba(10,181,160,0.3);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;letter-spacing:.5px;margin-bottom:16px;}
+.nadibox-inner h2{font-family:'Instrument Serif',serif;font-size:clamp(26px,3.5vw,40px);line-height:1.2;color:white;margin-bottom:14px;}
+.nadibox-inner h2 em{color:var(--teal);font-style:italic;}
+.nadibox-inner p{font-size:14.5px;color:rgba(255,255,255,0.7);line-height:1.7;margin-bottom:28px;}
+.specs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.spec-item{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px;}
+.spec-item .spec-icon{font-size:20px;margin-bottom:6px;}
+.spec-item h4{font-size:13px;font-weight:700;color:white;margin-bottom:3px;}
+.spec-item p{font-size:11.5px;color:rgba(255,255,255,0.55);line-height:1.4;}
+.nadibox-visual{display:flex;justify-content:center;}
+.device-card{background:rgba(255,255,255,0.05);border:1px solid rgba(10,181,160,0.3);border-radius:24px;padding:32px;text-align:center;position:relative;}
+.device-icon{font-size:64px;margin-bottom:16px;filter:drop-shadow(0 0 20px rgba(10,181,160,0.4));}
+.device-name{font-family:'Instrument Serif',serif;font-size:22px;color:white;margin-bottom:6px;}
+.device-sub{font-size:12px;color:var(--teal);font-weight:600;margin-bottom:20px;}
+.device-vitals{display:flex;flex-direction:column;gap:8px;}
+.dv-row{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.06);border-radius:8px;padding:8px 12px;}
+.dv-label{font-size:12px;color:rgba(255,255,255,0.6);}
+.dv-val{font-size:12px;font-weight:700;color:var(--green);}
+.device-badge{position:absolute;top:-10px;right:16px;background:var(--teal);color:white;font-size:10px;font-weight:700;padding:4px 12px;border-radius:20px;}
+
+/* SECTION */
+.section{padding:80px 5%;}
+.section-inner{max-width:900px;margin:0 auto;}
+.section-tag{display:inline-block;background:var(--teal-soft);color:var(--teal-dark);border:1px solid var(--teal-mid);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;letter-spacing:.5px;margin-bottom:16px;}
+.section h2{font-family:'Instrument Serif',serif;font-size:clamp(28px,4vw,44px);line-height:1.15;letter-spacing:-.3px;color:var(--ink);margin-bottom:16px;}
+.section h2 em{color:var(--teal);font-style:italic;}
+.section-inner>p{font-size:15px;color:var(--ink-mid);line-height:1.7;max-width:600px;}
+
+/* PROBLEM */
+.problems-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:40px;}
+.prob-card{background:var(--bg);border:1px solid var(--ink-faint);border-radius:16px;padding:24px;transition:all .2s;}
+.prob-card:hover{border-color:var(--teal-mid);box-shadow:0 4px 20px rgba(10,181,160,0.1);transform:translateY(-2px);}
+.prob-icon{font-size:28px;margin-bottom:12px;}
+.prob-card h3{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px;}
+.prob-card p{font-size:13px;color:var(--ink-mute);line-height:1.6;}
+
+/* FEATURES */
+.features-bg{background:var(--bg);}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-top:40px;}
+.feat-card{background:var(--white);border:1px solid var(--ink-faint);border-radius:20px;padding:28px;transition:all .25s;position:relative;overflow:hidden;}
+.feat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#0AB5A0,#34D399);opacity:0;transition:opacity .25s;}
+.feat-card:hover{box-shadow:0 8px 32px rgba(10,181,160,0.12);transform:translateY(-3px);border-color:var(--teal-mid);}
+.feat-card:hover::before{opacity:1;}
+.feat-icon{width:48px;height:48px;border-radius:12px;background:var(--teal-soft);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:16px;}
+.feat-card h3{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:8px;}
+.feat-card p{font-size:13.5px;color:var(--ink-mute);line-height:1.6;}
+.feat-tag{display:inline-block;margin-top:12px;font-size:11px;font-weight:700;color:var(--teal-dark);background:var(--teal-soft);padding:3px 10px;border-radius:10px;}
+
+/* HOW IT WORKS */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0;margin-top:48px;position:relative;}
+.steps::before{content:'';position:absolute;top:28px;left:10%;right:10%;height:2px;background:linear-gradient(90deg,var(--teal-mid),var(--teal));z-index:0;}
+.step{text-align:center;position:relative;z-index:1;padding:0 16px;}
+.step-num{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:22px;color:white;margin:0 auto 16px;box-shadow:0 4px 16px rgba(10,181,160,0.3);}
+.step h3{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+.step p{font-size:12.5px;color:var(--ink-mute);line-height:1.5;}
+
+/* DR AANYA SPOTLIGHT */
+.aanya-section{background:linear-gradient(135deg,#0AB5A0 0%,#089486 100%);padding:80px 5%;text-align:center;color:white;}
+.aanya-section .section-tag{background:rgba(255,255,255,0.15);color:white;border-color:rgba(255,255,255,0.3);}
+.aanya-section h2{font-family:'Instrument Serif',serif;font-size:clamp(28px,4vw,44px);color:white;margin-bottom:16px;}
+.aanya-section p{font-size:15px;color:rgba(255,255,255,0.85);line-height:1.7;max-width:560px;margin:0 auto 40px;}
+.aanya-pills{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:40px;}
+.aanya-pill{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:20px;padding:8px 18px;font-size:13px;color:white;font-weight:500;}
+.try-btn{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:white;color:var(--teal-dark);border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;transition:all .2s;box-shadow:0 4px 16px rgba(0,0,0,0.15);}
+.try-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.2);}
+
+/* WHO WE SERVE */
+.serve-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:40px;}
+.serve-card{background:var(--white);border:1.5px solid var(--ink-faint);border-radius:16px;padding:24px;text-align:center;transition:all .2s;}
+.serve-card:hover{border-color:var(--teal);box-shadow:0 4px 20px rgba(10,181,160,0.1);}
+.serve-icon{font-size:32px;margin-bottom:10px;}
+.serve-card h3{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+.serve-card p{font-size:12.5px;color:var(--ink-mute);line-height:1.5;}
+
+/* PRICING */
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-top:40px;max-width:820px;margin-left:auto;margin-right:auto;}
+.price-card{background:var(--white);border:1.5px solid var(--ink-faint);border-radius:20px;padding:28px;text-align:center;transition:all .2s;position:relative;}
+.price-card.featured{border-color:var(--teal);box-shadow:0 8px 32px rgba(10,181,160,0.15);}
+.featured-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--teal);color:white;font-size:11px;font-weight:700;padding:4px 14px;border-radius:20px;white-space:nowrap;}
+.price-card h3{font-size:15px;font-weight:700;color:var(--ink-mute);margin-bottom:12px;}
+.price-num{font-family:'Instrument Serif',serif;font-size:44px;color:var(--ink);line-height:1;}
+.price-num span{font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:500;color:var(--ink-mute);}
+.price-desc{font-size:13px;color:var(--ink-mute);margin:8px 0 20px;}
+.price-features{text-align:left;display:flex;flex-direction:column;gap:8px;margin-bottom:24px;}
+.pf{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-mid);}
+.pf::before{content:'✓';color:var(--teal);font-weight:700;flex-shrink:0;}
+.price-btn{width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .2s;border:none;}
+.price-btn.outline{background:var(--bg);color:var(--ink);border:1.5px solid var(--ink-faint);}
+.price-btn.outline:hover{border-color:var(--teal);color:var(--teal);}
+.price-btn.solid{background:var(--teal);color:white;box-shadow:0 4px 12px rgba(10,181,160,0.3);}
+.price-btn.solid:hover{background:var(--teal-dark);}
+
+/* WAITLIST FINAL */
+.waitlist-final{background:var(--bg);padding:80px 5%;text-align:center;}
+.waitlist-final h2{font-family:'Instrument Serif',serif;font-size:clamp(28px,4vw,44px);color:var(--ink);margin-bottom:12px;}
+.waitlist-final h2 em{color:var(--teal);font-style:italic;}
+.waitlist-final p{font-size:15px;color:var(--ink-mid);margin-bottom:36px;}
+.waitlist-count{font-size:13px;color:var(--ink-mute);margin-top:16px;}
+.waitlist-count b{color:var(--teal-dark);}
+
+/* FOOTER */
+footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:32px 5%;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;font-size:13px;}
+footer .logo{font-family:'Instrument Serif',serif;font-size:18px;color:white;}
+footer .logo em{color:var(--teal);}
+footer a{color:rgba(255,255,255,0.5);text-decoration:none;transition:color .2s;}
+footer a:hover{color:var(--teal);}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .nadibox-inner{grid-template-columns:1fr;}
+  .nadibox-visual{display:none;}
+}
+@media(max-width:600px){
+  .nav-links{display:none;}
+  .waitlist-form,.waitlist-final form{flex-direction:column;}
+  .steps::before{display:none;}
+  .vitals-row{grid-template-columns:repeat(3,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <div class="nav-logo">
+    <div class="dot">N</div>
+    <span>Nirog<em>AI</em></span>
+  </div>
+  <div class="nav-links">
+    <a href="#nadibox">NadiBox</a>
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#pricing">Pricing</a>
+  </div>
+  <a href="/auth" class="nav-cta">Join Waitlist →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="pulse"></span>
+    India's First AI + Hardware Health Platform — Now in Beta
+  </div>
+  <h1>
+    <span>A doctor in every</span>
+    <em>Indian's pocket.</em>
+    <span>Real vitals. Real AI. Real care.</span>
+  </h1>
+  <p>NirogAI combines the NadiBox smart health device with Dr. Aanya — your AI health companion — to deliver instant diagnostics, risk analysis, and doctor access to every Indian, from metros to villages.</p>
+  <div class="hero-actions">
+    <div class="waitlist-form">
+      <input type="email" id="heroEmail" placeholder="Enter your email address" />
+      <button class="join-btn" onclick="joinWaitlist('heroEmail','heroSuccess')">Join Waitlist →</button>
+    </div>
+    <div class="success-msg" id="heroSuccess">🎉 You're on the list! We'll notify you when NirogAI launches.</div>
+    <p class="hero-sub"><b>2,400+</b> people already on the waitlist · Free to join · No spam</p>
+  </div>
+
+  <!-- NadiBox + AI Preview -->
+  <div class="hero-visual">
+    <div class="vitals-preview">
+      <div class="vp-header">
+        <div class="vp-left">
+          <div class="vp-av">N</div>
+          <div>
+            <div class="vp-name">Dr. Aanya — NirogAI</div>
+            <div class="vp-status">● Live · Vitals Connected</div>
+          </div>
+        </div>
+        <div class="vp-device">📡 NadiBox Active</div>
+      </div>
+      <div class="vp-body">
+        <div class="vitals-row">
+          <div class="vital-chip">
+            <div class="val ok">98%</div>
+            <div class="lbl">SpO₂</div>
+          </div>
+          <div class="vital-chip">
+            <div class="val warn">128/84</div>
+            <div class="lbl">BP</div>
+          </div>
+          <div class="vital-chip">
+            <div class="val ok">72</div>
+            <div class="lbl">Heart Rate</div>
+          </div>
+        </div>
+        <div class="vp-chat">
+          <div class="vp-msg u">
+            <div class="cp-bubble">Mujhe 2 hafte se sir dard ho raha hai</div>
+          </div>
+          <div class="vp-msg ai">
+            <div class="vp-av" style="width:28px;height:28px;font-size:12px;flex-shrink:0;">N</div>
+            <div class="cp-bubble">
+              Aapka BP thoda elevated hai (128/84) aur headache ke saath yeh borderline hypertension ke signs ho sakte hain. Fikar mat karein — abhi critical nahi hai. Main recommend karta hoon: kal ek GP se milen. Kya main aapke liye ek doctor book karun?
+              <br><br>
+              <span class="cp-risk">🟡 Moderate Risk — Doctor visit recommended</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stats-inner">
+    <div class="stat-item">
+      <div class="stat-num">140M+</div>
+      <div class="stat-label">Indians with zero access to quality healthcare</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">1:10K</div>
+      <div class="stat-label">Doctor-to-patient ratio in rural India</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">24/7</div>
+      <div class="stat-label">Dr. Aanya available — no appointments needed</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">₹99</div>
+      <div class="stat-label">Premium plan — less than a doctor's OPD fee</div>
+    </div>
+  </div>
+</div>
+
+<!-- PROBLEM -->
+<section class="section" id="problem">
+  <div class="section-inner">
+    <span class="section-tag">THE PROBLEM</span>
+    <h2>India's healthcare leaves <em>800 million behind.</em></h2>
+    <p>The system isn't broken — it never existed for most of India. Here's what millions face every day.</p>
+    <div class="problems-grid">
+      <div class="prob-card">
+        <div class="prob-icon">🏥</div>
+        <h3>No doctors nearby</h3>
+        <p>Rural patients travel 4–6 hours to see a specialist. By then, conditions have already worsened.</p>
+      </div>
+      <div class="prob-card">
+        <div class="prob-icon">💸</div>
+        <h3>Unaffordable care</h3>
+        <p>72% of Indian healthcare spending is out-of-pocket. Families sell assets for medical bills.</p>
+      </div>
+      <div class="prob-card">
+        <div class="prob-icon">⚠️</div>
+        <h3>Wrong diagnosis</h3>
+        <p>70% of first diagnoses in Tier 3+ areas are incorrect due to overburdened doctors with 4 min per patient.</p>
+      </div>
+      <div class="prob-card">
+        <div class="prob-icon">📋</div>
+        <h3>No health records</h3>
+        <p>Reports here, prescriptions there. No unified health history means every visit starts from zero.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NADIBOX HARDWARE SECTION -->
+<section class="nadibox-section" id="nadibox">
+  <div class="nadibox-inner">
+    <div>
+      <span class="nadibox-tag">🔬 NADIBOX HARDWARE</span>
+      <h2>Your vitals, captured in <em>3 minutes.</em> Anywhere in India.</h2>
+      <p>NadiBox is a solar-powered portable diagnostic device that measures 5 critical vitals — no lab, no technician, no clinic needed. Designed for ASHA workers, village pharmacies, and home use across Bharat.</p>
+      <div class="specs-grid">
+        <div class="spec-item">
+          <div class="spec-icon">❤️</div>
+          <h4>SpO₂ + Heart Rate</h4>
+          <p>Blood oxygen & pulse via MAX30102</p>
+        </div>
+        <div class="spec-item">
+          <div class="spec-icon">🩺</div>
+          <h4>Blood Pressure</h4>
+          <p>Accurate oscillometric BP reading</p>
+        </div>
+        <div class="spec-item">
+          <div class="spec-icon">⚡</div>
+          <h4>ECG Monitoring</h4>
+          <p>Single-lead cardiac waveform via AD8232</p>
+        </div>
+        <div class="spec-item">
+          <div class="spec-icon">🌡️</div>
+          <h4>Body Temperature</h4>
+          <p>Non-contact IR sensing, instant reading</p>
+        </div>
+        <div class="spec-item">
+          <div class="spec-icon">☀️</div>
+          <h4>Solar + Battery</h4>
+          <p>Works fully off-grid. No electricity needed.</p>
+        </div>
+        <div class="spec-item">
+          <div class="spec-icon">📡</div>
+          <h4>NB-IoT + Bluetooth</h4>
+          <p>Works in areas with no 4G signal</p>
+        </div>
+      </div>
+    </div>
+    <div class="nadibox-visual">
+      <div class="device-card">
+        <div class="device-badge">🇮🇳 Made for Bharat</div>
+        <div class="device-icon">🔬</div>
+        <div class="device-name">NadiBox</div>
+        <div class="device-sub">Smart Portable Diagnostic Device</div>
+        <div class="device-vitals">
+          <div class="dv-row"><span class="dv-label">SpO₂</span><span class="dv-val">98% ✓</span></div>
+          <div class="dv-row"><span class="dv-label">Blood Pressure</span><span class="dv-val">118/76 ✓</span></div>
+          <div class="dv-row"><span class="dv-label">Heart Rate</span><span class="dv-val">72 bpm ✓</span></div>
+          <div class="dv-row"><span class="dv-label">Temperature</span><span class="dv-val">98.4°F ✓</span></div>
+          <div class="dv-row"><span class="dv-label">ECG</span><span class="dv-val">Normal ✓</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section features-bg" id="features">
+  <div class="section-inner">
+    <span class="section-tag">WHAT WE BUILT</span>
+    <h2>AI + Hardware + Doctors — <em>all in one.</em></h2>
+    <p>NirogAI is not just another health app. It's a complete healthcare platform built for India's real conditions.</p>
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-icon">🤖</div>
+        <h3>Dr. Aanya — AI Doctor</h3>
+        <p>Describe symptoms in Hindi or English. Dr. Aanya analyzes vitals + symptoms together for accurate risk assessment — 24/7.</p>
+        <span class="feat-tag">Core AI</span>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🔬</div>
+        <h3>NadiBox Vitals Integration</h3>
+        <p>Real vitals from your NadiBox device flow directly into AI analysis. No guesswork — real data, real diagnosis.</p>
+        <span class="feat-tag">Hardware + AI</span>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📹</div>
+        <h3>Doctor Video Consultation</h3>
+        <p>When AI recommends a doctor, book instantly. Verified doctors see your pre-filled vitals — no time wasted. Starting ₹100.</p>
+        <span class="feat-tag">Telemedicine</span>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📊</div>
+        <h3>Health Dashboard</h3>
+        <p>Track BP, SpO₂, ECG, sugar, and symptoms over time. Your complete health history, beautifully visualized.</p>
+        <span class="feat-tag">Health Analytics</span>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🚨</div>
+        <h3>Emergency Detection</h3>
+        <p>AI detects critical vitals in real time. Instantly alerts emergency contacts and guides you to nearest care.</p>
+        <span class="feat-tag">Safety First</span>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🔬</div>
+        <h3>Lab Report Analysis</h3>
+        <p>Upload blood reports or prescriptions. AI extracts key insights, flags abnormal values, and explains in simple language.</p>
+        <span class="feat-tag">AI Diagnostics</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <div class="section-inner">
+    <span class="section-tag">HOW IT WORKS</span>
+    <h2>From vitals to solution <em>in minutes.</em></h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Capture Vitals</h3>
+        <p>Use NadiBox to measure BP, SpO₂, ECG, and temperature in under 3 minutes — anywhere.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Tell Dr. Aanya</h3>
+        <p>Describe symptoms in Hindi or English. Vitals sync automatically to the AI.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>AI Analysis</h3>
+        <p>Dr. Aanya combines your vitals + symptoms for accurate risk classification instantly.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Act on It</h3>
+        <p>Get home care advice, book a doctor, or trigger emergency response — all in one tap.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHO WE SERVE -->
+<section class="section" id="serve">
+  <div class="section-inner">
+    <span class="section-tag">WHO WE SERVE</span>
+    <h2>Built for <em>every Indian,</em> not just metros.</h2>
+    <p>From Dehradun to Darbhanga — NirogAI works where India actually lives.</p>
+    <div class="serve-grid">
+      <div class="serve-card">
+        <div class="serve-icon">👨‍🌾</div>
+        <h3>Rural Patients</h3>
+        <p>Access diagnostics and doctor consults without traveling hours to a city.</p>
+      </div>
+      <div class="serve-card">
+        <div class="serve-icon">👩‍⚕️</div>
+        <h3>ASHA & ANM Workers</h3>
+        <p>NadiBox gives frontline workers clinical-grade diagnostics in the field.</p>
+      </div>
+      <div class="serve-card">
+        <div class="serve-icon">🏪</div>
+        <h3>Village Pharmacies</h3>
+        <p>Offer paid health checkups with NadiBox — a new revenue stream.</p>
+      </div>
+      <div class="serve-card">
+        <div class="serve-icon">🏢</div>
+        <h3>Corporates & Factories</h3>
+        <p>Employee health monitoring at scale — real vitals, real data, real savings.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DR AANYA SPOTLIGHT -->
+<section class="aanya-section">
+  <span class="section-tag">MEET DR. AANYA</span>
+  <h2>Your doctor who never sleeps.</h2>
+  <p>Dr. Aanya is not a chatbot. She's an intelligent health companion powered by advanced AI — trained on Indian diseases, symptoms, and healthcare contexts. She speaks your language, understands your vitals, and acts fast.</p>
+  <div class="aanya-pills">
+    <span class="aanya-pill">🧠 Symptom + Vitals Analysis</span>
+    <span class="aanya-pill">⚠️ Risk Classification</span>
+    <span class="aanya-pill">🚨 Emergency Detection</span>
+    <span class="aanya-pill">🔬 Report Analysis</span>
+    <span class="aanya-pill">💬 Hindi & English</span>
+    <span class="aanya-pill">📡 NadiBox Integrated</span>
+    <span class="aanya-pill">24/7 Available</span>
+  </div>
+  <a href="/auth" class="try-btn">✨ Try Dr. Aanya Free →</a>
+</section>
+
+<!-- PRICING -->
+<section class="section" id="pricing">
+  <div class="section-inner" style="text-align:center;">
+    <span class="section-tag">PRICING</span>
+    <h2>Affordable healthcare for <em>every Indian.</em></h2>
+    <p style="margin:0 auto 0;">No hidden charges. Cancel anytime.</p>
+    <div class="pricing-grid">
+      <div class="price-card">
+        <h3>FREE</h3>
+        <div class="price-num">₹0<span>/mo</span></div>
+        <p class="price-desc">For trying NirogAI</p>
+        <div class="price-features">
+          <div class="pf">10 AI chats per month</div>
+          <div class="pf">Basic health dashboard</div>
+          <div class="pf">BMI & BMR calculator</div>
+          <div class="pf">Emergency detection</div>
+          <div class="pf">NadiBox basic sync</div>
+        </div>
+        <button class="price-btn outline" onclick="window.location.href='/auth'">Get Started Free</button>
+      </div>
+      <div class="price-card featured">
+        <div class="featured-badge">⭐ Most Popular</div>
+        <h3>PREMIUM</h3>
+        <div class="price-num">₹99<span>/mo</span></div>
+        <p class="price-desc">Complete health management</p>
+        <div class="price-features">
+          <div class="pf">Unlimited AI chats with Dr. Aanya</div>
+          <div class="pf">Full NadiBox vitals history</div>
+          <div class="pf">Advanced health analytics</div>
+          <div class="pf">Lab report upload & analysis</div>
+          <div class="pf">Priority doctor connect</div>
+          <div class="pf">Family health profiles (5 members)</div>
+        </div>
+        <button class="price-btn solid" onclick="window.location.href='/auth'">Join Waitlist →</button>
+      </div>
+      <div class="price-card">
+        <h3>CONSULTATION</h3>
+        <div class="price-num">₹100<span>/visit</span></div>
+        <p class="price-desc">Real doctor, when you need one</p>
+        <div class="price-features">
+          <div class="pf">Verified MBBS doctors</div>
+          <div class="pf">Video + audio call</div>
+          <div class="pf">Digital prescription</div>
+          <div class="pf">Pre-filled vitals from NadiBox</div>
+        </div>
+        <button class="price-btn outline" onclick="window.location.href='/auth'">Book a Doctor</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WAITLIST FINAL -->
+<section class="waitlist-final" id="waitlist">
+  <h2>Be the first to experience <em>NirogAI.</em></h2>
+  <p>Join 2,400+ Indians already on the waitlist. Early access members get 3 months Premium free.</p>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+    <div class="waitlist-form" style="max-width:460px;width:100%;">
+      <input type="email" id="waitlistEmail" placeholder="Enter your email address" />
+      <button class="join-btn" onclick="joinWaitlist('waitlistEmail','waitlistSuccess')">Join Free →</button>
+    </div>
+    <div class="success-msg" id="waitlistSuccess" style="max-width:460px;">🎉 You're on the list! Early access members get 3 months Premium free.</div>
+    <p class="waitlist-count"><b>2,400+</b> people waiting · No spam · Unsubscribe anytime</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="logo">Nirog<em>AI</em></div>
+  <div>AI + Hardware healthcare for every Indian 🇮🇳</div>
+  <div style="display:flex;gap:20px;">
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">Contact</a>
+  </div>
+</footer>
+
+<script>
+window.addEventListener('scroll',()=>{
+  document.getElementById('navbar').classList.toggle('scrolled',window.scrollY>20);
+});
+
+const { createClient } = supabase;
+const sb = createClient('https://snsmcmxxlsolnkeukyog.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuc21jbXh4bHNvbG5rZXVreW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDY1MTEsImV4cCI6MjA4ODEyMjUxMX0.svnnhqmMTdTZOmdr0TcKi3yRi_hdPeyAUYz0sOOExHY');
+
+let count = 2400;
+async function joinWaitlist(inputId, successId){
+  const email = document.getElementById(inputId).value.trim();
+  if(!email || !email.includes('@')){
+    document.getElementById(inputId).style.borderColor='var(--red)';
+    setTimeout(()=>document.getElementById(inputId).style.borderColor='',2000);
+    return;
+  }
+  const btn = document.getElementById(inputId).closest('.waitlist-form').querySelector('button');
+  const originalText = btn.textContent;
+  btn.textContent = 'Joining...';
+  btn.disabled = true;
+  const { error } = await sb.from('waitlist').insert({
+    email: email,
+    joined_at: new Date().toISOString(),
+    source: inputId === 'heroEmail' ? 'hero' : 'bottom'
+  });
+  if(error && error.code !== '23505') console.log('Waitlist error:', error.message);
+  count++;
+  document.getElementById(inputId).style.display='none';
+  btn.style.display='none';
+  const s = document.getElementById(successId);
+  s.style.display='block';
+  document.querySelectorAll('.hero-sub b, .waitlist-count b').forEach(el=>{
+    if(el.textContent.includes('+')) el.textContent = count.toLocaleString()+'+';
+  });
+}
+
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    e.preventDefault();
+    const t=document.querySelector(a.getAttribute('href'));
+    if(t) t.scrollIntoView({behavior:'smooth'});
+  });
+});
+</script>
+
+<a href="/auth" style="position:fixed;bottom:24px;right:24px;background:var(--teal);color:white;padding:14px 22px;border-radius:50px;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 6px 20px rgba(10,181,160,0.4);z-index:99;display:flex;align-items:center;gap:8px;transition:all .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+  🤖 Try Dr. Aanya Free
+</a>
+</body>
+</html>

@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NirogAI — My Health Cards</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--teal:#0AB5A0;--teal-dark:#089486;--teal-soft:#E8F8F6;--teal-mid:#B2E8E2;--ink:#0D1B1A;--ink-mid:#2D4A47;--ink-mute:#6B8F8C;--ink-faint:#E2EDED;--white:#FFFFFF;--bg:#F4FAF9;--green:#10B981;--yellow:#F59E0B;--red:#EF4444;--purple:#7C3AED;--sidebar:240px;}
+html,body{height:100%;font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--ink);overflow:hidden;}
+.app{display:flex;height:100vh;}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar);flex-shrink:0;background:var(--white);border-right:1px solid var(--ink-faint);display:flex;flex-direction:column;padding:24px 0;z-index:10;}
+.sb-logo{display:flex;align-items:center;gap:10px;padding:0 20px 24px;border-bottom:1px solid var(--ink-faint);margin-bottom:16px;}
+.sb-logo .dot{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-size:16px;color:white;font-weight:700;}
+.sb-logo span{font-family:'Instrument Serif',serif;font-size:18px;color:var(--ink);}
+.sb-logo span em{color:var(--teal);font-style:italic;}
+.sb-section{padding:0 12px;margin-bottom:8px;}
+.sb-label{font-size:10px;font-weight:700;color:var(--ink-mute);letter-spacing:.8px;text-transform:uppercase;padding:0 8px;margin-bottom:6px;}
+.sb-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--ink-mid);text-decoration:none;transition:all .15s;}
+.sb-item:hover{background:var(--bg);}
+.sb-item.active{background:var(--teal-soft);color:var(--teal-dark);font-weight:600;}
+.sb-item .icon{width:20px;text-align:center;font-size:16px;}
+.sb-item .badge{margin-left:auto;background:var(--teal);color:white;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;}
+.sb-user{margin-top:auto;padding:16px 20px 0;border-top:1px solid var(--ink-faint);}
+.sb-user-row{display:flex;align-items:center;gap:10px;cursor:pointer;}
+.sb-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;flex-shrink:0;}
+.sb-user-info .name{font-size:13px;font-weight:600;color:var(--ink);}
+.sb-user-info .plan{font-size:11px;color:var(--teal-dark);font-weight:600;}
+
+/* MAIN */
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:var(--white);border-bottom:1px solid var(--ink-faint);position:sticky;top:0;z-index:5;flex-shrink:0;}
+.topbar h1{font-family:'Instrument Serif',serif;font-size:20px;font-weight:400;}
+.topbar p{font-size:12px;color:var(--ink-mute);margin-top:2px;}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.tb-btn{padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;white-space:nowrap;font-family:'Plus Jakarta Sans',sans-serif;}
+.tb-btn.solid{background:var(--teal);color:white;}
+.tb-btn.outline{background:transparent;border:1.5px solid var(--ink-faint);color:var(--ink-mid);}
+.tb-btn.purple{background:var(--purple);color:white;}
+
+.content{padding:20px 24px;display:flex;flex-direction:column;gap:20px;}
+
+/* ADD VITALS BANNER */
+.add-banner{background:linear-gradient(135deg,#0AB5A0,#089486);border-radius:18px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;color:white;}
+.add-banner h3{font-family:'Instrument Serif',serif;font-size:18px;margin-bottom:4px;}
+.add-banner p{font-size:13px;opacity:.85;}
+.add-big-btn{padding:11px 22px;background:white;color:var(--teal-dark);border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Plus Jakarta Sans',sans-serif;}
+
+/* VITALS CARDS GRID */
+.cards-header{display:flex;align-items:center;justify-content:space-between;}
+.cards-header h2{font-size:15px;font-weight:700;color:var(--ink);}
+.cards-header p{font-size:12px;color:var(--ink-mute);}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;}
+.filter-chip{padding:6px 14px;border-radius:20px;border:1.5px solid var(--ink-faint);background:var(--white);font-size:12px;font-weight:600;cursor:pointer;color:var(--ink-mute);transition:all .15s;font-family:'Plus Jakarta Sans',sans-serif;}
+.filter-chip.active{border-color:var(--teal);background:var(--teal-soft);color:var(--teal-dark);}
+
+.vitals-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+
+/* HEALTH CARD */
+.health-card{background:var(--white);border:1px solid var(--ink-faint);border-radius:18px;overflow:hidden;transition:all .2s;position:relative;}
+.health-card:hover{box-shadow:0 6px 24px rgba(0,0,0,0.08);transform:translateY(-2px);}
+.hc-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--ink-faint);}
+.hc-left{display:flex;align-items:center;gap:10px;}
+.hc-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.hc-source{font-size:11px;font-weight:700;color:var(--ink-mute);}
+.hc-time{font-size:11px;color:var(--ink-mute);}
+.hc-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;}
+.hc-badge.nadibox{background:rgba(10,181,160,0.1);color:var(--teal-dark);}
+.hc-badge.manual{background:rgba(59,130,246,0.1);color:#1D4ED8;}
+.hc-body{padding:16px;}
+.vitals-list{display:flex;flex-direction:column;gap:10px;}
+.vital-row{display:flex;align-items:center;justify-content:space-between;}
+.vital-name{font-size:12px;color:var(--ink-mute);font-weight:500;}
+.vital-reading{display:flex;align-items:center;gap:8px;}
+.vital-val{font-size:16px;font-weight:800;color:var(--ink);}
+.vital-unit{font-size:11px;color:var(--ink-mute);}
+.vital-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;}
+.vital-status.ok{background:#D1FAE5;color:#065F46;}
+.vital-status.warn{background:#FEF3C7;color:#92400E;}
+.vital-status.high{background:#FEE2E2;color:#991B1B;}
+.hc-note{margin-top:10px;padding:8px 10px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--ink-mid);font-style:italic;}
+.hc-footer{padding:10px 16px;border-top:1px solid var(--ink-faint);display:flex;align-items:center;gap:8px;}
+.hc-action{flex:1;padding:7px;border-radius:9px;border:1.5px solid var(--ink-faint);background:transparent;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink-mid);font-family:'Plus Jakarta Sans',sans-serif;transition:all .15s;}
+.hc-action:hover{border-color:var(--teal);color:var(--teal);}
+.hc-action.share{background:var(--teal-soft);border-color:var(--teal-mid);color:var(--teal-dark);}
+.hc-action.delete{border-color:transparent;color:#9CA3AF;}
+.hc-action.delete:hover{background:#FEE2E2;color:#DC2626;border-color:#FCA5A5;}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--ink-mute);}
+.empty-state .e-icon{font-size:48px;margin-bottom:16px;}
+.empty-state h3{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:8px;}
+.empty-state p{font-size:13px;line-height:1.6;}
+
+/* ADD VITALS MODAL */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:flex-end;justify-content:center;padding:0;}
+.modal.show{display:flex;}
+.modal-box{background:var(--white);border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;animation:slideUp .3s ease;}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:40px;height:4px;background:var(--ink-faint);border-radius:2px;margin:0 auto 20px;}
+.modal-title{font-family:'Instrument Serif',serif;font-size:22px;margin-bottom:4px;}
+.modal-sub{font-size:13px;color:var(--ink-mute);margin-bottom:20px;}
+.vitals-input-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+.vi-field label{font-size:11px;font-weight:700;color:var(--ink-mute);letter-spacing:.4px;display:block;margin-bottom:5px;}
+.vi-field input{width:100%;padding:11px 14px;border:1.5px solid var(--ink-faint);border-radius:11px;font-size:15px;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;transition:all .2s;background:var(--bg);text-align:center;}
+.vi-field input:focus{border-color:var(--teal);background:var(--white);}
+.source-row{display:flex;gap:8px;margin-bottom:16px;}
+.source-opt{flex:1;padding:10px;border-radius:11px;border:1.5px solid var(--ink-faint);background:var(--white);font-size:12px;font-weight:600;cursor:pointer;text-align:center;color:var(--ink-mute);transition:all .15s;font-family:'Plus Jakarta Sans',sans-serif;}
+.source-opt.active{border-color:var(--teal);background:var(--teal-soft);color:var(--teal-dark);}
+.note-field{margin-bottom:16px;}
+.note-field label{font-size:11px;font-weight:700;color:var(--ink-mute);letter-spacing:.4px;display:block;margin-bottom:5px;}
+.note-field input{width:100%;padding:11px 14px;border:1.5px solid var(--ink-faint);border-radius:11px;font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;transition:all .2s;background:var(--bg);}
+.note-field input:focus{border-color:var(--teal);}
+.modal-btns{display:flex;gap:10px;}
+.modal-cancel{flex:1;padding:12px;border-radius:11px;border:1.5px solid var(--ink-faint);background:transparent;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink-mid);font-family:'Plus Jakarta Sans',sans-serif;}
+.modal-save{flex:2;padding:12px;border-radius:11px;border:none;background:var(--teal);color:white;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;}
+.modal-save:disabled{opacity:.6;cursor:not-allowed;}
+
+/* SHARE MODAL */
+.share-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:110;align-items:center;justify-content:center;padding:20px;}
+.share-modal.show{display:flex;}
+.share-box{background:var(--white);border-radius:20px;padding:24px;width:100%;max-width:400px;}
+.share-title{font-family:'Instrument Serif',serif;font-size:20px;margin-bottom:4px;}
+.share-sub{font-size:13px;color:var(--ink-mute);margin-bottom:20px;}
+.share-card-preview{background:var(--bg);border:1px solid var(--ink-faint);border-radius:14px;padding:14px;margin-bottom:16px;}
+.share-card-preview h4{font-size:12px;font-weight:700;color:var(--ink-mute);margin-bottom:8px;letter-spacing:.4px;}
+.share-vitals-mini{display:flex;flex-wrap:wrap;gap:6px;}
+.svm-item{background:var(--white);border:1px solid var(--ink-faint);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:var(--ink);}
+.share-input-row{display:flex;gap:8px;margin-bottom:12px;}
+.share-input-row input{flex:1;padding:11px 14px;border:1.5px solid var(--ink-faint);border-radius:11px;font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;transition:all .2s;background:var(--bg);text-transform:uppercase;letter-spacing:1px;font-weight:700;}
+.share-input-row input:focus{border-color:var(--purple);}
+.share-input-row input::placeholder{text-transform:none;letter-spacing:0;font-weight:400;}
+.share-send-btn{padding:11px 18px;background:var(--purple);color:white;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Plus Jakarta Sans',sans-serif;}
+.share-divider{text-align:center;font-size:12px;color:var(--ink-mute);margin:12px 0;}
+.share-link-btn{width:100%;padding:11px;border-radius:11px;border:1.5px solid var(--teal-mid);background:var(--teal-soft);font-size:13px;font-weight:600;cursor:pointer;color:var(--teal-dark);font-family:'Plus Jakarta Sans',sans-serif;}
+.share-close{width:100%;padding:10px;border-radius:11px;border:none;background:var(--bg);font-size:13px;font-weight:600;cursor:pointer;color:var(--ink-mute);font-family:'Plus Jakarta Sans',sans-serif;margin-top:8px;}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0D1B1A;color:white;padding:12px 22px;border-radius:30px;font-size:13px;font-weight:600;z-index:300;display:none;white-space:nowrap;}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.9);z-index:200;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.spinner{width:36px;height:36px;border:3px solid #B2E8E2;border-top-color:#0AB5A0;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+@media(max-width:768px){.sidebar{display:none;}.vitals-grid{grid-template-columns:1fr;}.content{padding:14px 16px;}.vitals-input-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:#6B8F8C;">Loading health cards...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ADD VITALS MODAL -->
+<div class="modal" id="addModal">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📡 Add NadiBox Reading</div>
+    <div class="modal-sub">Enter vitals from your NadiBox device or log manually</div>
+    <!-- Source selector -->
+    <div class="source-row">
+      <button class="source-opt active" id="srcNadi" onclick="setSource('nadibox')">📡 NadiBox Device</button>
+      <button class="source-opt" id="srcManual" onclick="setSource('manual')">✏️ Manual Entry</button>
+    </div>
+    <div class="vitals-input-grid">
+      <div class="vi-field"><label>SpO₂ (%)</label><input type="number" id="inSpo2" placeholder="98" min="70" max="100"/></div>
+      <div class="vi-field"><label>Heart Rate (bpm)</label><input type="number" id="inHr" placeholder="72" min="30" max="250"/></div>
+      <div class="vi-field"><label>BP Systolic</label><input type="number" id="inBpS" placeholder="120" min="60" max="300"/></div>
+      <div class="vi-field"><label>BP Diastolic</label><input type="number" id="inBpD" placeholder="80" min="40" max="200"/></div>
+      <div class="vi-field"><label>Temperature (°F)</label><input type="number" id="inTemp" placeholder="98.6" step="0.1"/></div>
+      <div class="vi-field"><label>Blood Sugar (mg/dL)</label><input type="number" id="inSugar" placeholder="95"/></div>
+    </div>
+    <div class="note-field">
+      <label>NOTE (Optional)</label>
+      <input type="text" id="inNote" placeholder="e.g. After morning walk, fasting, post-meal..."/>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeAdd()">Cancel</button>
+      <button class="modal-save" id="saveVitalsBtn" onclick="saveVitals()">Save Health Card ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="share-modal" id="shareModal">
+  <div class="share-box">
+    <div class="share-title">Share with Doctor 👨‍⚕️</div>
+    <div class="share-sub">Share this health card with your doctor by Doctor ID or a secure link</div>
+    <div class="share-card-preview">
+      <h4>HEALTH CARD PREVIEW</h4>
+      <div class="share-vitals-mini" id="sharePreview"></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--ink-mute);margin-bottom:8px;letter-spacing:.4px;">SHARE BY DOCTOR ID</div>
+    <div class="share-input-row">
+      <input type="text" id="shareDrId" placeholder="Enter Doctor ID (e.g. DR-A1B2C)" maxlength="8"/>
+      <button class="share-send-btn" onclick="shareByDrId()">Send →</button>
+    </div>
+    <div class="share-divider">— or —</div>
+    <button class="share-link-btn" onclick="copyShareLink()">🔗 Copy Shareable Link</button>
+    <button class="share-close" onclick="closeShare()">Close</button>
+  </div>
+</div>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sb-logo"><div class="dot">N</div><span>Nirog<em>AI</em></span></div>
+    <div class="sb-section">
+      <div class="sb-label">Main</div>
+      <a class="sb-item" href="/dashboard"><span class="icon">📊</span> Dashboard</a>
+      <a class="sb-item" href="/dr-aanya"><span class="icon">🤖</span> Dr. Aanya <span class="badge">AI</span></a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">NadiBox</div>
+      <a class="sb-item active"><span class="icon">🔬</span> Health Cards</a>
+      <a class="sb-item" href="/video-consult"><span class="icon">📹</span> Video Consult</a>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Account</div>
+      <a class="sb-item" href="/dashboard"><span class="icon">👤</span> Profile</a>
+    </div>
+    <div class="sb-user">
+      <div class="sb-user-row">
+        <div class="sb-avatar" id="sidebarAvatar">?</div>
+        <div class="sb-user-info">
+          <div class="name" id="sidebarName">Loading...</div>
+          <div class="plan">📡 NadiBox Active</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1>🔬 Health Cards</h1>
+        <p id="cardCount">Loading...</p>
+      </div>
+      <div class="topbar-right">
+        <button class="tb-btn outline" onclick="location.href='/dashboard'">← Dashboard</button>
+        <button class="tb-btn solid" onclick="openAdd()">+ Add NadiBox Reading</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- ADD BANNER -->
+      <div class="add-banner">
+        <div>
+          <h3>📡 NadiBox Connected</h3>
+          <p>Log vitals from your device — each reading creates a timestamped health card</p>
+        </div>
+        <button class="add-big-btn" onclick="openAdd()">+ New Reading</button>
+      </div>
+
+      <!-- FILTER ROW -->
+      <div>
+        <div class="cards-header" style="margin-bottom:12px;">
+          <div>
+            <h2>Your Health Cards</h2>
+            <p>Tap any card to view details or share with your doctor</p>
+          </div>
+        </div>
+        <div class="filter-row">
+          <button class="filter-chip active" onclick="filterCards('all',this)">All Cards</button>
+          <button class="filter-chip" onclick="filterCards('nadibox',this)">📡 NadiBox Only</button>
+          <button class="filter-chip" onclick="filterCards('manual',this)">✏️ Manual Only</button>
+        </div>
+      </div>
+
+      <!-- CARDS -->
+      <div class="vitals-grid" id="cardsGrid">
+        <div class="empty-state">
+          <div class="e-icon">🔬</div>
+          <h3>No health cards yet</h3>
+          <p>Add your first NadiBox reading to start building your health history</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://snsmcmxxlsolnkeukyog.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuc21jbXh4bHNvbG5rZXVreW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDY1MTEsImV4cCI6MjA4ODEyMjUxMX0.svnnhqmMTdTZOmdr0TcKi3yRi_hdPeyAUYz0sOOExHY';
+const {createClient}=supabase;
+const sb=createClient(SB_URL,SB_KEY);
+
+let currentUser=null;
+let allCards=[];
+let currentSource='nadibox';
+let shareCardId=null;
+
+window.addEventListener('DOMContentLoaded',async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){window.location.href='/auth';return;}
+  currentUser=session.user;
+  const name=currentUser.user_metadata?.first_name||currentUser.user_metadata?.full_name?.split(' ')[0]||currentUser.email.split('@')[0];
+  document.getElementById('sidebarName').textContent=name;
+  document.getElementById('sidebarAvatar').textContent=name[0].toUpperCase();
+  await loadCards();
+  document.getElementById('loadingOverlay').style.display='none';
+});
+
+async function loadCards(){
+  const {data,error}=await sb.from('nadibox_cards').select('*').eq('user_id',currentUser.id).order('recorded_at',{ascending:false});
+  allCards=data||[];
+  document.getElementById('cardCount').textContent=`${allCards.length} health card${allCards.length!==1?'s':''} recorded`;
+  renderCards(allCards);
+}
+
+function renderCards(cards){
+  const grid=document.getElementById('cardsGrid');
+  if(!cards.length){
+    grid.innerHTML=`<div class="empty-state"><div class="e-icon">🔬</div><h3>No cards found</h3><p>Add your first NadiBox reading to start</p></div>`;
+    return;
+  }
+  grid.innerHTML=cards.map(c=>buildCard(c)).join('');
+}
+
+function buildCard(c){
+  const dt=new Date(c.recorded_at);
+  const dateStr=dt.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  const timeStr=dt.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  const source=c.source==='nadibox'?'📡 NadiBox':'✏️ Manual';
+  const sourceClass=c.source==='nadibox'?'nadibox':'manual';
+  let vitalsHtml='';
+  const vitals=[];
+  if(c.spo2!=null) vitals.push({n:'SpO₂',v:c.spo2,u:'%',s:getStatus('spo2',c.spo2)});
+  if(c.heart_rate!=null) vitals.push({n:'Heart Rate',v:c.heart_rate,u:'bpm',s:getStatus('hr',c.heart_rate)});
+  if(c.bp_systolic!=null) vitals.push({n:'Blood Pressure',v:`${c.bp_systolic}/${c.bp_diastolic||'--'}`,u:'mmHg',s:getStatus('bp',c.bp_systolic)});
+  if(c.temperature!=null) vitals.push({n:'Temperature',v:c.temperature,u:'°F',s:getStatus('temp',c.temperature)});
+  if(c.blood_sugar!=null) vitals.push({n:'Blood Sugar',v:c.blood_sugar,u:'mg/dL',s:getStatus('sugar',c.blood_sugar)});
+  vitalsHtml=vitals.map(v=>`<div class="vital-row"><span class="vital-name">${v.n}</span><div class="vital-reading"><span class="vital-val">${v.v}</span><span class="vital-unit">${v.u}</span><span class="vital-status ${v.s.cls}">${v.s.lbl}</span></div></div>`).join('');
+  const noteHtml=c.note?`<div class="hc-note">📝 ${c.note}</div>`:'';
+  return `<div class="health-card" id="card-${c.id}">
+    <div class="hc-header">
+      <div class="hc-left">
+        <div class="hc-icon" style="background:${c.source==='nadibox'?'var(--teal-soft)':'#EFF6FF'}">🔬</div>
+        <div><div style="font-size:13px;font-weight:700;color:var(--ink);">${dateStr}</div><div class="hc-source">${timeStr}</div></div>
+      </div>
+      <span class="hc-badge ${sourceClass}">${source}</span>
+    </div>
+    <div class="hc-body">
+      <div class="vitals-list">${vitalsHtml}</div>
+      ${noteHtml}
+    </div>
+    <div class="hc-footer">
+      <button class="hc-action share" onclick="openShare('${c.id}')">📤 Share with Doctor</button>
+      <button class="hc-action delete" onclick="deleteCard('${c.id}')">🗑️</button>
+    </div>
+  </div>`;
+}
+
+function getStatus(type,val){
+  if(type==='spo2'){
+    if(val>=95) return {cls:'ok',lbl:'Normal'};
+    if(val>=90) return {cls:'warn',lbl:'Low'};
+    return {cls:'high',lbl:'Critical'};
+  }
+  if(type==='hr'){
+    if(val>=60&&val<=100) return {cls:'ok',lbl:'Normal'};
+    if(val>=50&&val<=110) return {cls:'warn',lbl:'Watch'};
+    return {cls:'high',lbl:'Abnormal'};
+  }
+  if(type==='bp'){
+    if(val<120) return {cls:'ok',lbl:'Normal'};
+    if(val<130) return {cls:'warn',lbl:'Elevated'};
+    if(val<140) return {cls:'warn',lbl:'Stage 1'};
+    return {cls:'high',lbl:'High'};
+  }
+  if(type==='temp'){
+    if(val>=97&&val<=99) return {cls:'ok',lbl:'Normal'};
+    if(val<97||val>99) return {cls:'warn',lbl:'Abnormal'};
+  }
+  if(type==='sugar'){
+    if(val<100) return {cls:'ok',lbl:'Normal'};
+    if(val<126) return {cls:'warn',lbl:'Pre-diabetic'};
+    return {cls:'high',lbl:'High'};
+  }
+  return {cls:'ok',lbl:''};
+}
+
+function filterCards(type,btn){
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  if(type==='all') renderCards(allCards);
+  else renderCards(allCards.filter(c=>c.source===type));
+}
+
+// ADD VITALS
+function setSource(src){
+  currentSource=src;
+  document.getElementById('srcNadi').classList.toggle('active',src==='nadibox');
+  document.getElementById('srcManual').classList.toggle('active',src==='manual');
+}
+
+function openAdd(){
+  ['inSpo2','inHr','inBpS','inBpD','inTemp','inSugar','inNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('addModal').classList.add('show');
+}
+function closeAdd(){document.getElementById('addModal').classList.remove('show');}
+
+async function saveVitals(){
+  const spo2=parseFloat(document.getElementById('inSpo2').value)||null;
+  const hr=parseFloat(document.getElementById('inHr').value)||null;
+  const bpS=parseFloat(document.getElementById('inBpS').value)||null;
+  const bpD=parseFloat(document.getElementById('inBpD').value)||null;
+  const temp=parseFloat(document.getElementById('inTemp').value)||null;
+  const sugar=parseFloat(document.getElementById('inSugar').value)||null;
+  const note=document.getElementById('inNote').value.trim()||null;
+  if(!spo2&&!hr&&!bpS&&!temp&&!sugar){showToast('⚠️ Kam se kam ek vital enter karo');return;}
+  const btn=document.getElementById('saveVitalsBtn');
+  btn.disabled=true;btn.textContent='Saving...';
+  const {error}=await sb.from('nadibox_cards').insert({
+    user_id:currentUser.id,source:currentSource,
+    spo2,heart_rate:hr,bp_systolic:bpS,bp_diastolic:bpD,
+    temperature:temp,blood_sugar:sugar,note,
+    recorded_at:new Date().toISOString()
+  });
+  btn.disabled=false;btn.textContent='Save Health Card ✓';
+  if(error){showToast('❌ '+error.message);return;}
+  closeAdd();showToast('✅ Health card saved!');
+  await loadCards();
+}
+
+async function deleteCard(id){
+  if(!confirm('Ye health card delete karna chahte ho?'))return;
+  await sb.from('nadibox_cards').delete().eq('id',id).eq('user_id',currentUser.id);
+  allCards=allCards.filter(c=>c.id!==id);
+  document.getElementById('cardCount').textContent=`${allCards.length} health card${allCards.length!==1?'s':''} recorded`;
+  renderCards(allCards);
+  showToast('🗑️ Card deleted!');
+}
+
+// SHARE
+function openShare(cardId){
+  shareCardId=cardId;
+  const card=allCards.find(c=>c.id===cardId);
+  if(!card)return;
+  const items=[];
+  if(card.spo2!=null) items.push(`SpO₂: ${card.spo2}%`);
+  if(card.heart_rate!=null) items.push(`HR: ${card.heart_rate}bpm`);
+  if(card.bp_systolic!=null) items.push(`BP: ${card.bp_systolic}/${card.bp_diastolic||'--'}`);
+  if(card.temperature!=null) items.push(`Temp: ${card.temperature}°F`);
+  if(card.blood_sugar!=null) items.push(`Sugar: ${card.blood_sugar}mg/dL`);
+  const dt=new Date(card.recorded_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  items.push(`📅 ${dt}`);
+  document.getElementById('sharePreview').innerHTML=items.map(i=>`<div class="svm-item">${i}</div>`).join('');
+  document.getElementById('shareDrId').value='';
+  document.getElementById('shareModal').classList.add('show');
+}
+function closeShare(){document.getElementById('shareModal').classList.remove('show');}
+
+async function shareByDrId(){
+  const drId=document.getElementById('shareDrId').value.trim().toUpperCase();
+  if(!drId||!drId.startsWith('DR-')){showToast('⚠️ Valid Doctor ID daalo (DR-XXXXX)');return;}
+  // Find doctor
+  const {data:dr}=await sb.from('doctors').select('id,user_id,full_name').eq('doctor_id',drId).maybeSingle();
+  if(!dr){showToast('❌ Doctor ID nahi mila');return;}
+  // Share the card
+  await sb.from('shared_cards').insert({
+    card_id:shareCardId,patient_id:currentUser.id,
+    doctor_id:dr.id,doctor_user_id:dr.user_id,
+    shared_at:new Date().toISOString(),status:'shared'
+  });
+  closeShare();
+  showToast(`✅ Health card Dr. ${dr.full_name} ko share kar diya!`);
+}
+
+function copyShareLink(){
+  const link=`${window.location.origin}/shared-card?id=${shareCardId}&token=${currentUser.id.slice(0,8)}`;
+  navigator.clipboard.writeText(link).then(()=>{showToast('🔗 Link copy ho gaya!');closeShare();});
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+
+document.getElementById('addModal').addEventListener('click',e=>{if(e.target===document.getElementById('addModal'))closeAdd();});
+document.getElementById('shareModal').addEventListener('click',e=>{if(e.target===document.getElementById('shareModal'))closeShare();});
+</script>
+</body>
+</html>

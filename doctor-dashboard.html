@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NirogAI — Doctor Dashboard</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--teal:#0AB5A0;--teal-dark:#089486;--teal-soft:#E8F8F6;--teal-mid:#B2E8E2;--ink:#0D1B1A;--ink-mid:#2D4A47;--ink-mute:#6B8F8C;--ink-faint:#E2EDED;--white:#fff;--bg:#F4FAF9;--green:#10B981;--red:#EF4444;--purple:#7C3AED;--purple-soft:#F5F3FF;--sidebar:250px;}
+html,body{height:100%;font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--ink);overflow:hidden;}
+.app{display:flex;height:100vh;}
+.sb{width:var(--sidebar);flex-shrink:0;background:#1E0B3A;display:flex;flex-direction:column;padding:20px 0;}
+.sb-logo{display:flex;align-items:center;gap:10px;padding:0 18px 18px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:14px;}
+.sb-logo .dot{width:34px;height:34px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:14px;color:white;}
+.sb-logo .brand{font-family:'Instrument Serif',serif;font-size:16px;color:white;}
+.sb-logo .brand em{color:#C4B5FD;font-style:italic;}
+.sb-logo .badge{font-size:9px;font-weight:700;background:var(--purple);color:white;padding:2px 6px;border-radius:7px;margin-top:2px;}
+.sb-sec{padding:0 10px;margin-bottom:6px;}
+.sb-lbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:.8px;text-transform:uppercase;padding:0 8px;margin-bottom:4px;}
+.sb-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;cursor:pointer;font-size:12.5px;font-weight:500;color:rgba(255,255,255,.55);text-decoration:none;transition:all .15s;}
+.sb-item:hover{background:rgba(255,255,255,.08);}
+.sb-item.active{background:var(--purple);color:white;font-weight:600;}
+.sb-item .ic{width:18px;text-align:center;font-size:14px;}
+.sb-item .cnt{margin-left:auto;background:var(--red);color:white;border-radius:10px;padding:1px 6px;font-size:9px;font-weight:700;}
+.sb-foot{margin-top:auto;padding:14px 18px 0;border-top:1px solid rgba(255,255,255,.1);}
+.sb-user{display:flex;align-items:center;gap:9px;}
+.sb-av{width:34px;height:34px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;}
+.sb-name{font-size:12px;font-weight:600;color:white;}
+.sb-id{font-size:10px;color:#C4B5FD;font-weight:600;}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 22px;background:var(--white);border-bottom:1px solid var(--ink-faint);position:sticky;top:0;z-index:5;flex-shrink:0;}
+.topbar h1{font-family:'Instrument Serif',serif;font-size:18px;font-weight:400;}
+.topbar p{font-size:11px;color:var(--ink-mute);margin-top:1px;}
+.topbar-r{display:flex;align-items:center;gap:7px;}
+.tb-btn{padding:7px 13px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:'Plus Jakarta Sans',sans-serif;}
+.tb-btn.purp{background:var(--purple);color:white;}
+.tb-btn.out{background:transparent;border:1.5px solid var(--ink-faint);color:var(--ink-mid);}
+.content{padding:18px 22px;display:flex;flex-direction:column;gap:16px;}
+.id-card{background:linear-gradient(135deg,#7C3AED,#5B21B6);border-radius:16px;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;color:white;}
+.id-card h3{font-family:'Instrument Serif',serif;font-size:14px;opacity:.8;margin-bottom:2px;}
+.id-val{font-family:'Instrument Serif',serif;font-size:24px;letter-spacing:3px;}
+.id-sub{font-size:10px;opacity:.6;margin-top:2px;}
+.copy-btn{padding:8px 14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:9px;color:white;font-size:11px;font-weight:600;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.stat{background:var(--white);border-radius:12px;padding:13px;border:1px solid var(--ink-faint);}
+.stat .num{font-family:'Instrument Serif',serif;font-size:24px;color:var(--purple);}
+.stat .lbl{font-size:11px;color:var(--ink-mute);margin-top:2px;}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.sec-hdr h2{font-size:13px;font-weight:700;color:var(--ink);}
+.req-list{display:flex;flex-direction:column;gap:8px;}
+.req-card{background:var(--white);border:1px solid var(--ink-faint);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;}
+.req-av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;flex-shrink:0;}
+.req-info{flex:1;}
+.req-name{font-size:13px;font-weight:700;color:var(--ink);}
+.req-sub{font-size:11px;color:var(--ink-mute);margin-top:2px;}
+.req-actions{display:flex;gap:5px;flex-wrap:wrap;}
+.ra{padding:6px 10px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:'Plus Jakarta Sans',sans-serif;}
+.ra.accept{background:#D1FAE5;color:#059669;}
+.ra.sched{background:var(--purple-soft);color:var(--purple);}
+.ra.view{background:var(--teal-soft);color:var(--teal-dark);}
+.ra.call{background:var(--purple);color:white;}
+.ra.dec{background:#FEE2E2;color:var(--red);}
+.hcard{background:var(--white);border:1px solid var(--ink-faint);border-radius:12px;overflow:hidden;margin-bottom:8px;}
+.hcard-top{padding:11px 13px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--ink-faint);}
+.hcard-l{display:flex;align-items:center;gap:9px;}
+.hcard-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;flex-shrink:0;}
+.hcard-name{font-size:12px;font-weight:700;color:var(--ink);}
+.hcard-time{font-size:10px;color:var(--ink-mute);}
+.badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:18px;}
+.badge.new{background:rgba(124,58,237,.1);color:var(--purple);}
+.badge.risk{background:#FEE2E2;color:#DC2626;}
+.hcard-body{padding:11px 13px;}
+.vchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+.vc{background:var(--bg);border:1px solid var(--ink-faint);border-radius:7px;padding:4px 9px;font-size:11px;}
+.vc .vv{font-weight:800;color:var(--ink);}
+.vc .vl{color:var(--ink-mute);margin-left:2px;}
+.vs{font-size:9px;font-weight:700;padding:1px 5px;border-radius:7px;margin-left:3px;}
+.vs.ok{background:#D1FAE5;color:#065F46;}
+.vs.warn{background:#FEF3C7;color:#92400E;}
+.vs.high{background:#FEE2E2;color:#991B1B;}
+.hcard-note{font-size:11px;color:var(--ink-mute);font-style:italic;}
+.hcard-foot{padding:9px 13px;border-top:1px solid var(--ink-faint);display:flex;gap:6px;}
+.hf{flex:1;padding:6px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--ink-faint);background:transparent;color:var(--ink-mid);font-family:'Plus Jakarta Sans',sans-serif;}
+.hf:hover{border-color:var(--purple);color:var(--purple);}
+.hf.call{background:var(--purple);color:white;border-color:var(--purple);}
+.hf.rx{background:var(--teal-soft);color:var(--teal-dark);border-color:var(--teal-mid);}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:14px;}
+.modal.show{display:flex;}
+.mbox{background:var(--white);border-radius:16px;padding:0;width:100%;max-width:480px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;}
+.mhead{padding:16px 20px;border-bottom:1px solid var(--ink-faint);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.mhead h3{font-family:'Instrument Serif',serif;font-size:18px;}
+.mclose{background:none;border:none;font-size:17px;cursor:pointer;color:var(--ink-mute);}
+.mbody{padding:16px 20px;overflow-y:auto;flex:1;}
+.mfoot{padding:12px 20px;border-top:1px solid var(--ink-faint);display:flex;gap:9px;flex-shrink:0;}
+.fg{margin-bottom:11px;}
+.fg label{display:block;font-size:10px;font-weight:700;color:var(--ink-mid);margin-bottom:4px;letter-spacing:.3px;text-transform:uppercase;}
+.fg input,.fg select,.fg textarea{width:100%;padding:9px 12px;border:1.5px solid var(--ink-faint);border-radius:9px;font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;transition:all .2s;background:var(--bg);}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--purple);background:var(--white);}
+.mf-save{flex:2;padding:10px;border-radius:10px;border:none;background:var(--purple);color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;}
+.mf-cancel{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--ink-faint);background:transparent;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink-mute);font-family:'Plus Jakarta Sans',sans-serif;}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:6px;}
+.slot{padding:8px;border:1.5px solid var(--ink-faint);border-radius:9px;text-align:center;cursor:pointer;font-size:11px;font-weight:600;color:var(--ink-mute);transition:all .15s;}
+.slot.sel{border-color:var(--purple);background:var(--purple-soft);color:var(--purple);}
+.pat-top{display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg);border-radius:11px;margin-bottom:14px;}
+.pat-av-big{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:white;flex-shrink:0;}
+.pat-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;}
+.pat-tag{font-size:9px;font-weight:700;background:var(--teal-soft);color:var(--teal-dark);padding:2px 6px;border-radius:7px;}
+.tl{display:flex;flex-direction:column;gap:8px;}
+.tl-item{background:var(--bg);border:1px solid var(--ink-faint);border-radius:10px;padding:10px 12px;}
+.tl-time{font-size:10px;color:var(--ink-mute);margin-bottom:5px;font-weight:600;}
+.tl-vs{display:flex;flex-wrap:wrap;gap:4px;}
+.tl-v{font-size:11px;font-weight:700;background:var(--white);border:1px solid var(--ink-faint);border-radius:7px;padding:3px 8px;color:var(--ink);}
+.rx-item{background:linear-gradient(135deg,var(--teal-soft),var(--white));border:1.5px solid var(--teal-mid);border-radius:12px;padding:13px;margin-bottom:10px;}
+.rx-hdr{display:flex;justify-content:space-between;margin-bottom:10px;}
+.rx-title{font-size:12px;font-weight:700;color:var(--teal-dark);}
+.rx-date{font-size:10px;color:var(--ink-mute);}
+.rx-med{padding:6px 0;border-bottom:1px solid var(--teal-mid);}
+.rx-med:last-child{border-bottom:none;}
+.rx-mname{font-size:12px;font-weight:700;color:var(--ink);}
+.rx-mdose{font-size:10px;color:var(--ink-mute);}
+.empty{text-align:center;padding:28px 16px;color:var(--ink-mute);background:var(--white);border-radius:12px;border:1px solid var(--ink-faint);}
+.empty .ei{font-size:32px;margin-bottom:8px;}
+.empty h3{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#0D1B1A;color:white;padding:10px 20px;border-radius:28px;font-size:12px;font-weight:600;z-index:300;display:none;white-space:nowrap;}
+.lo{position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:200;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;}
+.sp{width:32px;height:32px;border:3px solid rgba(124,58,237,.2);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:768px){.sb{display:none;}.stats{grid-template-columns:repeat(2,1fr);}.content{padding:13px 14px;}}
+</style>
+</head>
+<body>
+<div class="lo" id="lo"><div class="sp"></div><div style="font-size:12px;color:#6B8F8C;">Loading...</div></div>
+<div class="toast" id="toast"></div>
+
+<!-- PATIENT FULL VIEW -->
+<div class="modal" id="patModal">
+  <div class="mbox">
+    <div class="mhead"><h3>Patient Profile 🏥</h3><button class="mclose" onclick="cm('patModal')">✕</button></div>
+    <div class="mbody" id="patBody">Loading...</div>
+    <div class="mfoot">
+      <button class="mf-save" onclick="callPat()">📹 Video Call</button>
+      <button class="mf-cancel" onclick="cm('patModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRESCRIPTION -->
+<div class="modal" id="rxModal">
+  <div class="mbox">
+    <div class="mhead"><h3>💊 Write Prescription</h3><button class="mclose" onclick="cm('rxModal')">✕</button></div>
+    <div class="mbody">
+      <div style="background:var(--purple-soft);border-radius:9px;padding:9px 12px;margin-bottom:12px;font-size:12px;color:var(--purple);">Patient ke dashboard pe automatically appear hoga ✅</div>
+      <div class="fg"><label>Patient</label><input id="rxPat" readonly style="background:var(--bg);"/></div>
+      <div class="fg"><label>Diagnosis</label><input id="rxDiag" placeholder="e.g. Hypertension Stage 1"/></div>
+      <div style="font-size:10px;font-weight:700;color:var(--ink-mute);letter-spacing:.3px;text-transform:uppercase;margin-bottom:7px;">MEDICINES</div>
+      <div id="rxMedList"></div>
+      <button onclick="addMed()" style="width:100%;padding:8px;border:1.5px dashed var(--ink-faint);border-radius:9px;background:transparent;font-size:11px;font-weight:600;cursor:pointer;color:var(--ink-mute);font-family:'Plus Jakarta Sans',sans-serif;margin-top:6px;">+ Add Medicine</button>
+      <div class="fg" style="margin-top:12px;"><label>Doctor's Notes</label><textarea id="rxNotes" rows="2" placeholder="Special instructions, dietary advice..."></textarea></div>
+      <div class="fg"><label>Follow-up Date</label><input type="date" id="rxFu"/></div>
+    </div>
+    <div class="mfoot">
+      <button class="mf-save" onclick="saveRx()">💊 Save Prescription</button>
+      <button class="mf-cancel" onclick="cm('rxModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCHEDULE -->
+<div class="modal" id="schedModal">
+  <div class="mbox">
+    <div class="mhead"><h3>📅 Schedule Appointment</h3><button class="mclose" onclick="cm('schedModal')">✕</button></div>
+    <div class="mbody">
+      <div class="fg"><label>Patient</label><input id="schedPat" readonly style="background:var(--bg);"/></div>
+      <div class="fg"><label>Date</label><input type="date" id="schedDate"/></div>
+      <div class="fg"><label>Time Slot</label>
+        <div class="slots" id="slotsGrid"></div>
+      </div>
+      <div class="fg"><label>Type</label>
+        <select id="schedType">
+          <option value="video">📹 Video Consultation</option>
+          <option value="followup">🔄 Follow-up</option>
+          <option value="report">📋 Report Review</option>
+        </select>
+      </div>
+      <div class="fg"><label>Notes for Patient</label><textarea id="schedNotes" rows="2" placeholder="Fasting required, bring reports etc."></textarea></div>
+    </div>
+    <div class="mfoot">
+      <button class="mf-save" onclick="saveSched()">📅 Schedule</button>
+      <button class="mf-cancel" onclick="cm('schedModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="sb">
+    <div class="sb-logo">
+      <div class="dot">👨‍⚕️</div>
+      <div><div class="brand">Nirog<em>AI</em></div><div class="badge">Doctor</div></div>
+    </div>
+    <div class="sb-sec">
+      <div class="sb-lbl">Dashboard</div>
+      <a class="sb-item active" onclick="showTab('patients')"><span class="ic">🏥</span> Patients <span class="cnt" id="reqCnt"></span></a>
+      <a class="sb-item" onclick="showTab('cards')"><span class="ic">🔬</span> Health Cards <span class="cnt" id="cardCnt"></span></a>
+      <a class="sb-item" onclick="showTab('rx')"><span class="ic">💊</span> Prescriptions</a>
+      <a class="sb-item" onclick="showTab('hospital')"><span class="ic">🏨</span> My Hospital</a>
+    </div>
+    <div class="sb-sec">
+      <div class="sb-lbl">Actions</div>
+      <a class="sb-item" onclick="location.href='/video-consult'"><span class="ic">📹</span> Video Call</a>
+      <a class="sb-item" onclick="showTab('hospital')"><span class="ic">🏥</span> My Hospital</a>
+      <a class="sb-item" onclick="copyId()"><span class="ic">📋</span> Copy My ID</a>
+      <a class="sb-item" onclick="doLogout()"><span class="ic">🚪</span> Logout</a>
+    </div>
+    <div class="sb-foot">
+      <div class="sb-user">
+        <div class="sb-av" id="drAv">?</div>
+        <div><div class="sb-name" id="drName">...</div><div class="sb-id" id="drIdSb">DR-XXXXX</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div><h1>Doctor Dashboard 🩺</h1><p id="greet">Welcome</p></div>
+      <div class="topbar-r">
+        <button class="tb-btn out" onclick="copyId()">📋 My ID</button>
+        <button class="tb-btn purp" onclick="location.href='/video-consult'">📹 Start Call</button>
+      </div>
+    </div>
+    <div class="content">
+      <div class="id-card">
+        <div><h3>Your Doctor ID — Share with patients</h3><div class="id-val" id="drIdBig">DR-XXXXX</div><div class="id-sub">Patients apna health card is ID se share karenge</div></div>
+        <button class="copy-btn" onclick="copyId()">📋 Copy</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="num" id="stPat">0</div><div class="lbl">My Patients</div></div>
+        <div class="stat"><div class="num" id="stCards">0</div><div class="lbl">Health Cards</div></div>
+        <div class="stat"><div class="num" id="stRx">0</div><div class="lbl">Prescriptions</div></div>
+        <div class="stat"><div class="num" id="stNew">0</div><div class="lbl">Pending Requests</div></div>
+      </div>
+
+      <!-- PATIENTS TAB -->
+      <div id="tab-patients">
+        <div class="sec-hdr"><h2>📨 Patient Requests</h2><span style="font-size:11px;color:var(--ink-mute);">Accept = full access</span></div>
+        <div class="req-list" id="reqList"><div class="empty"><div class="ei">📭</div><h3>No requests</h3><p>Share your ID: <b id="shareIdHint">DR-XXXXX</b></p></div></div>
+        <div class="sec-hdr" style="margin-top:18px;"><h2>👥 My Patients</h2></div>
+        <div class="req-list" id="myPatList"><div class="empty"><div class="ei">🏥</div><h3>No patients yet</h3></div></div>
+      </div>
+
+      <!-- CARDS TAB -->
+      <div id="tab-cards" style="display:none;">
+        <div class="sec-hdr"><h2>🔬 Shared Health Cards</h2></div>
+        <div id="cardsList"><div class="empty"><div class="ei">📭</div><h3>No cards yet</h3></div></div>
+      </div>
+
+      <div id="tab-hospital" style="display:none;">
+        <div class="sec-hdr"><h2>🏥 Register Your Hospital</h2></div>
+        <div id="hospRegForm" style="background:var(--white);border:1px solid var(--ink-faint);border-radius:14px;padding:20px;">
+          <div style="background:var(--purple-soft);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--purple);">Apna hospital register karo — patients seedha free appointment book kar sakenge</div>
+          <div class="fg"><label>Hospital Name</label><input id="hName" placeholder="e.g. Apollo Clinic, Dehradun"/></div>
+          <div class="fg"><label>City</label><input id="hCity" placeholder="e.g. Dehradun"/></div>
+          <div class="fg"><label>Full Address</label><input id="hAddr" placeholder="e.g. Rajpur Road, Near Clock Tower"/></div>
+          <div class="fg"><label>Specialties (comma separated)</label><input id="hSpec" placeholder="General, Cardiology, Orthopedic"/></div>
+          <div class="fg"><label>Total Daily Slots</label><input type="number" id="hSlots" placeholder="e.g. 20" value="20"/></div>
+          <div class="fg"><label>About Hospital</label><textarea id="hAbout" rows="2" placeholder="Brief description of your hospital and facilities..."></textarea></div>
+          <button onclick="saveHospital()" style="width:100%;padding:12px;background:var(--purple);color:white;border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">🏥 Register Hospital</button>
+          <div id="hospRegSuccess" style="display:none;margin-top:12px;background:#D1FAE5;border-radius:10px;padding:12px 14px;font-size:13px;color:#059669;font-weight:600;">✅ Hospital registered! Patients ab book kar sakte hain.</div>
+        </div>
+      </div>
+
+      <!-- RX TAB -->
+      <div id="tab-rx" style="display:none;">
+        <div class="sec-hdr"><h2>💊 Prescriptions Issued</h2></div>
+        <div id="rxList"><div class="empty"><div class="ei">💊</div><h3>No prescriptions yet</h3></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://snsmcmxxlsolnkeukyog.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuc21jbXh4bHNvbG5rZXVreW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDY1MTEsImV4cCI6MjA4ODEyMjUxMX0.svnnhqmMTdTZOmdr0TcKi3yRi_hdPeyAUYz0sOOExHY';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+let user=null,doc=null,rxPatId=null,schedPatId=null,viewPatId=null,selSlot='',medIdx=0;
+
+window.addEventListener('DOMContentLoaded',async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){location.href='/auth';return;}
+  user=session.user;
+  const {data:dr}=await sb.from('doctors').select('*').eq('user_id',user.id).maybeSingle();
+  if(!dr){location.href='/dashboard';return;}
+  doc=dr;
+  const fn=(dr.full_name||'Doctor').split(' ')[0];
+  document.getElementById('drAv').textContent=(dr.full_name||'D')[0].toUpperCase();
+  document.getElementById('drName').textContent=fn;
+  document.getElementById('drIdSb').textContent=dr.doctor_id;
+  document.getElementById('drIdBig').textContent=dr.doctor_id;
+  document.getElementById('shareIdHint').textContent=dr.doctor_id;
+  const hr=new Date().getHours();
+  const g=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  document.getElementById('greet').textContent=`${g}, Dr. ${fn} 👋`;
+  document.getElementById('schedDate').min=new Date().toISOString().split('T')[0];
+  buildSlots();
+  await loadAll();
+  document.getElementById('lo').style.display='none';
+});
+
+async function loadAll(){await Promise.all([loadReqs(),loadCards(),loadRx()]);}
+
+async function loadReqs(){
+  const {data:reqs}=await sb.from('patient_doctor_requests').select('*').eq('doctor_id',doc.id).order('created_at',{ascending:false});
+  const pending=(reqs||[]).filter(r=>r.status==='pending');
+  const accepted=(reqs||[]).filter(r=>r.status==='accepted');
+  document.getElementById('reqCnt').textContent=pending.length||'';
+  document.getElementById('stPat').textContent=accepted.length;
+  document.getElementById('stNew').textContent=pending.length;
+  // Pending
+  const rEl=document.getElementById('reqList');
+  if(!pending.length){rEl.innerHTML=`<div class="empty"><div class="ei">📭</div><h3>No pending requests</h3><p>Share ID: <b>${doc.doctor_id}</b> with patients</p></div>`;return;}
+  const {data:p1}=await sb.from('profiles').select('*').in('id',pending.map(r=>r.patient_id));
+  const pm1={};(p1||[]).forEach(p=>pm1[p.id]=p);
+  rEl.innerHTML=pending.map(r=>{const p=pm1[r.patient_id]||{};const n=p.full_name||'Patient';
+    return `<div class="req-card"><div class="req-av">${n[0].toUpperCase()}</div><div class="req-info"><div class="req-name">${n}</div><div class="req-sub">${p.age?p.age+' yrs · ':''}${p.blood_group||''}</div></div><div class="req-actions"><button class="ra accept" onclick="acceptReq('${r.id}','${r.patient_id}')">✅ Accept</button><button class="ra sched" onclick="openSched('${r.patient_id}','${n}')">📅 Schedule</button><button class="ra dec" onclick="declineReq('${r.id}')">❌</button></div></div>`;
+  }).join('');
+  // Accepted
+  const myEl=document.getElementById('myPatList');
+  if(!accepted.length){myEl.innerHTML='<div class="empty"><div class="ei">🏥</div><h3>No accepted patients yet</h3></div>';return;}
+  const {data:p2}=await sb.from('profiles').select('*').in('id',accepted.map(r=>r.patient_id));
+  const pm2={};(p2||[]).forEach(p=>pm2[p.id]=p);
+  myEl.innerHTML=accepted.map(r=>{const p=pm2[r.patient_id]||{};const n=p.full_name||'Patient';
+    return `<div class="req-card"><div class="req-av">${n[0].toUpperCase()}</div><div class="req-info"><div class="req-name">${n}</div><div class="req-sub">${p.age?p.age+' yrs · ':''}${p.blood_group||''}${p.phone?' · '+p.phone:''}</div></div><div class="req-actions"><button class="ra view" onclick="viewPat('${r.patient_id}')">📋 Profile</button><button class="ra sched" onclick="openRx('${r.patient_id}','${n}')">💊 Rx</button><button class="ra call" onclick="callPat2('${r.patient_id}')">📹 Call</button></div></div>`;
+  }).join('');
+}
+
+async function acceptReq(id,patId){
+  await sb.from('patient_doctor_requests').update({status:'accepted',accepted_at:new Date().toISOString()}).eq('id',id);
+  toast('✅ Patient accepted! Full profile access mil gaya.');
+  await loadReqs();
+}
+async function declineReq(id){
+  await sb.from('patient_doctor_requests').update({status:'declined'}).eq('id',id);
+  toast('Request declined');await loadReqs();
+}
+
+async function viewPat(patId){
+  viewPatId=patId;
+  om('patModal');
+  document.getElementById('patBody').innerHTML='<div style="text-align:center;padding:24px;color:var(--ink-mute);">Loading...</div>';
+  const [{data:prof},{data:cards},{data:rxs},{data:labs}]=await Promise.all([
+    sb.from('profiles').select('*').eq('id',patId).maybeSingle(),
+    sb.from('shared_cards').select('*,nadibox_cards(*)').eq('patient_id',patId).eq('doctor_id',doc.id).order('shared_at',{ascending:false}),
+    sb.from('prescriptions').select('*').eq('patient_id',patId).eq('doctor_id',doc.id).order('created_at',{ascending:false}),
+    sb.from('lab_reports').select('*').eq('patient_id',patId).order('uploaded_at',{ascending:false})
+  ]);
+  const p=prof||{};const n=p.full_name||'Patient';
+  const tags=[p.blood_group?'🩸 '+p.blood_group:'',p.age?'🎂 '+p.age+' yrs':'',p.phone?'📞 '+p.phone:''].filter(Boolean);
+  const cardsH=(cards||[]).map(s=>{const c=s.nadibox_cards;if(!c)return'';const dt=new Date(s.shared_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});const vs=[];if(c.spo2!=null)vs.push(`SpO₂:${c.spo2}%`);if(c.heart_rate!=null)vs.push(`HR:${c.heart_rate}`);if(c.bp_systolic!=null)vs.push(`BP:${c.bp_systolic}/${c.bp_diastolic||'--'}`);if(c.temperature!=null)vs.push(`${c.temperature}°F`);if(c.blood_sugar!=null)vs.push(`Sugar:${c.blood_sugar}`);return`<div class="tl-item"><div class="tl-time">📅 ${dt}</div><div class="tl-vs">${vs.map(v=>`<span class="tl-v">${v}</span>`).join('')}</div>${c.note?`<div style="font-size:10px;color:var(--ink-mute);margin-top:4px;font-style:italic;">📝 ${c.note}</div>`:''}</div>`;}).join('')||'<div style="font-size:12px;color:var(--ink-mute);padding:8px;">No cards shared yet</div>';
+  const rxH=(rxs||[]).map(rx=>`<div style="background:var(--teal-soft);border-radius:9px;padding:9px 11px;margin-bottom:7px;"><div style="font-size:10px;color:var(--teal-dark);font-weight:700;margin-bottom:3px;">${new Date(rx.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div><div style="font-size:12px;font-weight:700;color:var(--ink);">${rx.diagnosis||'General'}</div><div style="font-size:11px;color:var(--ink-mute);">${rx.medicines?JSON.parse(rx.medicines).map(m=>m.name).join(', '):''}</div></div>`).join('')||'<div style="font-size:12px;color:var(--ink-mute);">No prescriptions</div>';
+  const labH=(labs||[]).map(l=>`<div style="background:var(--bg);border-radius:9px;padding:9px 11px;margin-bottom:6px;"><div style="font-size:12px;font-weight:700;color:var(--ink);">🔬 ${l.report_name||'Lab Report'}</div><div style="font-size:10px;color:var(--ink-mute);">${new Date(l.uploaded_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div></div>`).join('')||'<div style="font-size:12px;color:var(--ink-mute);">No lab reports</div>';
+  document.getElementById('patBody').innerHTML=`<div class="pat-top"><div class="pat-av-big">${n[0].toUpperCase()}</div><div><div style="font-size:15px;font-weight:700;color:var(--ink);">${n}</div>${tags.length?`<div class="pat-tags">${tags.map(t=>`<span class="pat-tag">${t}</span>`).join('')}</div>`:''}</div></div><div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:7px;">📋 Health Cards (${(cards||[]).length})</div><div class="tl" style="margin-bottom:14px;">${cardsH}</div><div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:7px;">💊 Prescriptions (${(rxs||[]).length})</div><div style="margin-bottom:14px;">${rxH}</div><div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:7px;">🔬 Lab Reports (${(labs||[]).length})</div><div>${labH}</div>`;
+}
+function callPat(){cm('patModal');location.href='/video-consult?patient='+viewPatId;}
+function callPat2(id){location.href='/video-consult?patient='+id;}
+
+async function loadCards(){
+  const {data:shared}=await sb.from('shared_cards').select('*,nadibox_cards(*)').eq('doctor_id',doc.id).order('shared_at',{ascending:false});
+  document.getElementById('stCards').textContent=(shared||[]).length;
+  document.getElementById('cardCnt').textContent=(shared||[]).length||'';
+  const el=document.getElementById('cardsList');
+  if(!(shared||[]).length){el.innerHTML=`<div class="empty"><div class="ei">📭</div><h3>No cards yet</h3><p>Share ID: <b>${doc.doctor_id}</b></p></div>`;return;}
+  const pids=[...new Set((shared||[]).map(s=>s.patient_id))];
+  const {data:profs}=await sb.from('profiles').select('id,full_name').in('id',pids);
+  const pm={};(profs||[]).forEach(p=>pm[p.id]=p);
+  el.innerHTML=(shared||[]).map(s=>{
+    const c=s.nadibox_cards;const p=pm[s.patient_id]||{};const n=p.full_name||'Patient';
+    const dt=new Date(s.shared_at);const isToday=dt.toDateString()===new Date().toDateString();
+    const ts=isToday?dt.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+' today':dt.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    let risk=false;const vs=[];
+    if(c){
+      if(c.spo2!=null){const ok=c.spo2>=95;if(!ok)risk=true;vs.push({l:'SpO₂',v:`${c.spo2}%`,s:ok?'ok':c.spo2>=90?'warn':'high'});}
+      if(c.heart_rate!=null){const ok=c.heart_rate>=60&&c.heart_rate<=100;vs.push({l:'HR',v:`${c.heart_rate}`,s:ok?'ok':'warn'});}
+      if(c.bp_systolic!=null){const b=c.bp_systolic;if(b>=140)risk=true;vs.push({l:'BP',v:`${b}/${c.bp_diastolic||'--'}`,s:b<120?'ok':b<130?'warn':'high'});}
+      if(c.temperature!=null)vs.push({l:'Temp',v:`${c.temperature}°F`,s:'ok'});
+      if(c.blood_sugar!=null){const ok=c.blood_sugar<126;if(c.blood_sugar>=200)risk=true;vs.push({l:'Sugar',v:`${c.blood_sugar}`,s:ok?'ok':'high'});}
+    }
+    return `<div class="hcard"><div class="hcard-top"><div class="hcard-l"><div class="hcard-av">${n[0].toUpperCase()}</div><div><div class="hcard-name">${n}</div><div class="hcard-time">${ts}</div></div></div>${risk?'<span class="badge risk">🔴 High Risk</span>':isToday?'<span class="badge new">🆕 New</span>':''}</div><div class="hcard-body"><div class="vchips">${vs.map(v=>`<div class="vc"><span class="vv">${v.v}</span><span class="vl">${v.l}</span><span class="vs ${v.s}">${v.s==='ok'?'✓':v.s==='warn'?'⚠':'🔴'}</span></div>`).join('')}</div>${c?.note?`<div class="hcard-note">📝 ${c.note}</div>`:''}</div><div class="hcard-foot"><button class="hf" onclick="viewPat('${s.patient_id}')">👤 Profile</button><button class="hf rx" onclick="openRx('${s.patient_id}','${n}')">💊 Rx</button><button class="hf call" onclick="callPat2('${s.patient_id}')">📹 Call</button></div></div>`;
+  }).join('');
+}
+
+async function loadRx(){
+  const {data:rxs}=await sb.from('prescriptions').select('*').eq('doctor_id',doc.id).order('created_at',{ascending:false});
+  document.getElementById('stRx').textContent=(rxs||[]).length;
+  const el=document.getElementById('rxList');
+  if(!(rxs||[]).length){el.innerHTML='<div class="empty"><div class="ei">💊</div><h3>No prescriptions yet</h3></div>';return;}
+  el.innerHTML=(rxs||[]).map(rx=>{const meds=rx.medicines?JSON.parse(rx.medicines):[];return`<div class="rx-item"><div class="rx-hdr"><div class="rx-title">💊 ${rx.diagnosis||'Rx'} — ${rx.patient_name||'Patient'}</div><div class="rx-date">${new Date(rx.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</div></div>${meds.map(m=>`<div class="rx-med"><div class="rx-mname">${m.name}</div><div class="rx-mdose">${m.dose||''} ${m.frequency||''} ${m.duration||''}</div></div>`).join('')}${rx.notes?`<div style="font-size:11px;color:var(--ink-mute);margin-top:6px;padding-top:6px;border-top:1px solid var(--teal-mid);">📝 ${rx.notes}</div>`:''}</div>`;}).join('');
+}
+
+function openRx(pid,pname){rxPatId=pid;document.getElementById('rxPat').value=pname;document.getElementById('rxDiag').value='';document.getElementById('rxNotes').value='';document.getElementById('rxFu').value='';document.getElementById('rxMedList').innerHTML='';medIdx=0;addMed();om('rxModal');}
+function addMed(){medIdx++;const d=document.createElement('div');d.style.cssText='display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:5px;margin-bottom:7px;';d.innerHTML=`<input placeholder="Medicine" class="mn" style="padding:7px 9px;border:1.5px solid var(--ink-faint);border-radius:8px;font-size:12px;font-family:'Plus Jakarta Sans',sans-serif;outline:none;background:var(--bg);"/><input placeholder="Dose" class="md" style="padding:7px 9px;border:1.5px solid var(--ink-faint);border-radius:8px;font-size:12px;font-family:'Plus Jakarta Sans',sans-serif;outline:none;background:var(--bg);"/><input placeholder="1-0-1" class="mf" style="padding:7px 9px;border:1.5px solid var(--ink-faint);border-radius:8px;font-size:12px;font-family:'Plus Jakarta Sans',sans-serif;outline:none;background:var(--bg);"/><input placeholder="7 days" class="mdu" style="padding:7px 9px;border:1.5px solid var(--ink-faint);border-radius:8px;font-size:12px;font-family:'Plus Jakarta Sans',sans-serif;outline:none;background:var(--bg);"/><button onclick="this.parentElement.remove()" style="padding:7px;border:none;background:#FEE2E2;border-radius:8px;cursor:pointer;color:var(--red);">✕</button>`;document.getElementById('rxMedList').appendChild(d);}
+async function saveRx(){
+  const diag=document.getElementById('rxDiag').value.trim();if(!diag){toast('⚠️ Diagnosis daalo');return;}
+  const meds=[];document.querySelectorAll('#rxMedList > div').forEach(r=>{const n=r.querySelector('.mn')?.value.trim();if(n)meds.push({name:n,dose:r.querySelector('.md')?.value,frequency:r.querySelector('.mf')?.value,duration:r.querySelector('.mdu')?.value});});
+  if(!meds.length){toast('⚠️ Medicine add karo');return;}
+  const {error}=await sb.from('prescriptions').insert({doctor_id:doc.id,patient_id:rxPatId,patient_name:document.getElementById('rxPat').value,doctor_name:doc.full_name,diagnosis:diag,medicines:JSON.stringify(meds),notes:document.getElementById('rxNotes').value,followup_date:document.getElementById('rxFu').value||null,created_at:new Date().toISOString()});
+  if(error){toast('❌ '+error.message);return;}
+  toast('✅ Prescription saved! Patient dashboard pe appear hoga.');cm('rxModal');await loadRx();
+}
+
+function openSched(pid,pname){schedPatId=pid;document.getElementById('schedPat').value=pname;selSlot='';document.querySelectorAll('.slot').forEach(s=>s.classList.remove('sel'));om('schedModal');}
+function buildSlots(){const ss=['9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM'];document.getElementById('slotsGrid').innerHTML=ss.map(s=>`<div class="slot" onclick="pickSlot(this,'${s}')">${s}</div>`).join('');}
+function pickSlot(el,s){selSlot=s;document.querySelectorAll('.slot').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');}
+async function saveSched(){
+  if(!document.getElementById('schedDate').value){toast('⚠️ Date choose karo');return;}
+  if(!selSlot){toast('⚠️ Time slot choose karo');return;}
+  const {error}=await sb.from('appointments').insert({doctor_id:doc.id,patient_id:schedPatId,patient_name:document.getElementById('schedPat').value,doctor_name:doc.full_name,appointment_date:document.getElementById('schedDate').value,appointment_time:selSlot,type:document.getElementById('schedType').value,notes:document.getElementById('schedNotes').value,status:'scheduled',created_at:new Date().toISOString()});
+  if(error){toast('❌ '+error.message);return;}
+  toast('✅ Appointment scheduled!');cm('schedModal');
+}
+
+      <!-- HOSPITAL TAB -->
+      <div id="tab-hospital" style="display:none;">
+        <div class="sec-hdr"><h2>🏨 Register My Hospital</h2></div>
+
+        <!-- Existing hospital -->
+        <div id="existingHosp" style="display:none;margin-bottom:16px;">
+          <div style="background:var(--white);border:1px solid var(--ink-faint);border-radius:14px;padding:16px;" id="hospPreview"></div>
+        </div>
+
+        <div style="background:var(--white);border:1px solid var(--ink-faint);border-radius:14px;padding:20px;" id="hospForm">
+          <div style="background:var(--purple-soft);border-radius:10px;padding:10px 13px;margin-bottom:16px;font-size:12px;color:var(--purple);line-height:1.5;">
+            🏥 Apna hospital register karo — patients seedha free slot book kar sakenge. Photos aur videos bhi add kar sakte ho.
+          </div>
+
+          <!-- PHOTO UPLOAD -->
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-size:10px;font-weight:700;color:var(--ink-mid);margin-bottom:6px;letter-spacing:.3px;text-transform:uppercase;">HOSPITAL PHOTO</label>
+            <div id="photoPreview" style="width:100%;height:160px;background:var(--bg);border:2px dashed var(--ink-faint);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;margin-bottom:8px;overflow:hidden;position:relative;" onclick="document.getElementById('photoInput').click()">
+              <div id="photoPlaceholder" style="text-align:center;color:var(--ink-mute);">
+                <div style="font-size:32px;margin-bottom:6px;">📷</div>
+                <div style="font-size:12px;font-weight:600;">Click to upload hospital photo</div>
+                <div style="font-size:11px;margin-top:2px;">JPG, PNG — Max 5MB</div>
+              </div>
+              <img id="photoImg" style="display:none;width:100%;height:100%;object-fit:cover;"/>
+            </div>
+            <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="previewPhoto(this)"/>
+          </div>
+
+          <!-- VIDEO/CLIP URL -->
+          <div class="fg">
+            <label>VIDEO TOUR URL (Optional)</label>
+            <input id="hVid" placeholder="YouTube ya Google Drive video link..." style="width:100%;padding:10px 12px;border:1.5px solid var(--ink-faint);border-radius:10px;font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;background:var(--bg);"/>
+          </div>
+
+          <div class="fg"><label>HOSPITAL NAME</label><input id="hName" placeholder="e.g. Apollo Clinic, Dehradun" style="width:100%;padding:10px 12px;border:1.5px solid var(--ink-faint);border-radius:10px;font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;background:var(--bg);"/></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="fg"><label>CITY</label><input id="hCity" placeholder="e.g. Dehradun" style="width:100%;padding:10px 12px;border:1.5px solid var(--ink-faint);border-radius:10px;font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;background:var(--bg);"/></div>
+            <div class="fg"><label>TOTAL DAILY SLOTS</label><input type="number" id="hSlots" value="20" placeholder="20" style="width:100%;padding:10px 12px;border:1.5px solid var(--ink-faint);border-radius:10px;font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;background:var(--bg);"/></div>
+          </div>
+          <div class="fg"><label>FULL ADDRESS</label><input id="hAddr" placeholder="e.g. Rajpur Road, Near Clock Tower, Dehradun" style="width:100%;padding:10px 12px;border:1.5px solid var(--ink-faint);border-radius:10px;font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;background:var(--bg);"/></div>
+          <div class="fg"><label>SPECIALTIES (comma separated)</label><input id="hSpec" placeholder="General Physician, Cardiologist, Gynecologist" style="width:100%;padding:10px 12px;border:1.5px solid var(--ink-faint);border-radius:10px;font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;background:var(--bg);"/></div>
+          <div class="fg"><label>ABOUT HOSPITAL</label><textarea id="hAbout" rows="2" placeholder="Brief description of facilities, experience, specializations..." style="width:100%;padding:10px 12px;border:1.5px solid var(--ink-faint);border-radius:10px;font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;background:var(--bg);resize:none;"></textarea></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+            <input type="checkbox" id="hFree" checked style="width:16px;height:16px;accent-color:var(--teal);"/>
+            <label for="hFree" style="font-size:13px;color:var(--ink-mid);">✅ Offer free appointments to patients</label>
+          </div>
+          <button onclick="saveHospital()" id="saveHospBtn" style="width:100%;padding:12px;background:linear-gradient(135deg,#0AB5A0,#089486);color:white;border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">🏥 Register Hospital</button>
+          <div id="hospOk" style="display:none;margin-top:10px;background:#D1FAE5;border-radius:10px;padding:11px 14px;font-size:13px;color:#059669;font-weight:600;text-align:center;">✅ Hospital registered! Patients ab book kar sakte hain. <a href="/hospitals" style="color:var(--teal-dark);text-decoration:underline;">View →</a></div>
+        </div>
+      </div>
+
+function showTab(t){['patients','cards','rx','hospital'].forEach(x=>document.getElementById('tab-'+x).style.display=x===t?'block':'none');document.querySelectorAll('.sb-item').forEach((el,i)=>el.classList.toggle('active',i===['patients','cards','rx','hospital'].indexOf(t)));}
+
+function previewPhoto(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    document.getElementById('photoImg').src=e.target.result;
+    document.getElementById('photoImg').style.display='block';
+    document.getElementById('photoPlaceholder').style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveHospital(){
+  const name=document.getElementById('hName').value.trim();
+  const city=document.getElementById('hCity').value.trim();
+  const addr=document.getElementById('hAddr').value.trim();
+  if(!name||!city||!addr){toast('⚠️ Name, city aur address zaroori hai');return;}
+  const btn=document.getElementById('saveHospBtn');btn.disabled=true;btn.textContent='Saving...';
+  let photoUrl=null;
+  // Upload photo if selected
+  const photoFile=document.getElementById('photoInput').files[0];
+  if(photoFile){
+    const fname=`hospitals/${doc.id}_${Date.now()}.${photoFile.name.split('.').pop()}`;
+    const {data:upData,error:upErr}=await sb.storage.from('hospital-photos').upload(fname,photoFile,{upsert:true}).catch(()=>({data:null,error:'upload failed'}));
+    if(upData){const {data:urlData}=sb.storage.from('hospital-photos').getPublicUrl(fname);photoUrl=urlData?.publicUrl;}
+  }
+  const specs=document.getElementById('hSpec').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const {error}=await sb.from('hospitals').insert({
+    doctor_id:doc.id,doctor_user_id:user.id,name,city,address:addr,
+    specialties:specs,total_slots:parseInt(document.getElementById('hSlots').value)||20,
+    booked_slots:0,about:document.getElementById('hAbout').value.trim(),
+    video_url:document.getElementById('hVid').value.trim()||null,
+    photo_url:photoUrl,emoji:'🏥',is_active:true,
+    is_free:document.getElementById('hFree').checked,rating:4.5,
+    created_at:new Date().toISOString()
+  });
+  btn.disabled=false;btn.textContent='🏥 Register Hospital';
+  if(error){toast('❌ '+error.message);return;}
+  document.getElementById('hospOk').style.display='block';
+  toast('✅ Hospital registered successfully!');
+}
+function om(id){document.getElementById(id).classList.add('show');}
+function cm(id){document.getElementById(id).classList.remove('show');}
+function copyId(){navigator.clipboard.writeText(doc.doctor_id).then(()=>toast('✅ Copied: '+doc.doctor_id));}
+async function doLogout(){await sb.auth.signOut();location.href='/auth';}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3500);}
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("show");}));
+
+async function saveHospital(){
+  const name=document.getElementById("hName").value.trim();
+  const city=document.getElementById("hCity").value.trim();
+  const addr=document.getElementById("hAddr").value.trim();
+  const spec=document.getElementById("hSpec").value.trim();
+  const slots=document.getElementById("hSlots").value;
+  const about=document.getElementById("hAbout").value.trim();
+  if(!name||!city||!addr){toast("⚠️ Name, city aur address zaroori hai");return;}
+  const {error}=await sb.from("hospitals").insert({doctor_id:doc.id,doctor_user_id:user.id,name,city,address:addr,specialties:spec.split(",").map(s=>s.trim()).filter(Boolean),total_slots:slots?parseInt(slots):20,booked_slots:0,about,emoji:"🏥",is_active:true,is_free:true,rating:4.5,created_at:new Date().toISOString()});
+  if(error){toast("❌ "+error.message);return;}
+  document.getElementById("hospRegSuccess").style.display="block";
+  toast("✅ Hospital registered!");
+}
+</script>
+</body>
+</html>

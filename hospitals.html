@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NirogAI — Find & Book Hospitals</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--teal:#00B8A9;--teal2:#00958A;--teal-g:linear-gradient(135deg,#00B8A9,#00958A);--ink:#09181A;--ink2:#1E3638;--mute:#607B7D;--faint:#EEF5F5;--border:#D4E8E8;--white:#fff;--bg:#F0F7F7;--red:#F23030;--green:#00B87A;--purple:#6C5CE7;}
+*{font-family:'Sora',sans-serif;}
+html,body{min-height:100%;background:var(--bg);color:var(--ink);}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 5%;height:62px;display:flex;align-items:center;justify-content:space-between;}
+.nav-logo{display:flex;align-items:center;gap:9px;}
+.logo-mark{width:34px;height:34px;border-radius:10px;background:var(--teal-g);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:16px;color:white;box-shadow:0 4px 12px rgba(0,184,169,0.35);}
+.logo-text{font-family:'Instrument Serif',serif;font-size:19px;color:var(--ink);}
+.logo-text em{color:var(--teal);font-style:italic;}
+.nav-right{display:flex;align-items:center;gap:9px;}
+.n-btn{padding:7px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:'Sora',sans-serif;text-decoration:none;}
+.n-btn.out{background:transparent;border:1.5px solid var(--border);color:var(--ink2);}
+.n-btn.teal{background:var(--teal-g);color:white;box-shadow:0 4px 12px rgba(0,184,169,0.25);}
+
+/* HERO */
+.hero{background:linear-gradient(145deg,#09181A,#0f2e2e);padding:52px 5% 40px;position:relative;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(0,184,169,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,184,169,0.05) 1px,transparent 1px);background-size:32px 32px;}
+.hero-glow{position:absolute;top:-100px;right:10%;width:400px;height:400px;background:radial-gradient(circle,rgba(0,184,169,0.12) 0%,transparent 70%);}
+.hero-content{position:relative;z-index:2;text-align:center;}
+.hero-tag{display:inline-flex;align-items:center;gap:7px;background:rgba(0,184,169,0.15);border:1px solid rgba(0,184,169,0.25);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;color:var(--teal);margin-bottom:16px;}
+.hero h1{font-family:'Instrument Serif',serif;font-size:clamp(28px,4vw,48px);color:white;line-height:1.15;margin-bottom:10px;}
+.hero h1 em{color:var(--teal);font-style:italic;}
+.hero p{font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:28px;}
+/* SEARCH */
+.search-box{background:white;border-radius:16px;padding:8px 8px 8px 18px;display:flex;align-items:center;gap:8px;max-width:640px;margin:0 auto 14px;box-shadow:0 12px 40px rgba(0,0,0,0.2);}
+.search-box input{flex:1;border:none;outline:none;font-size:14px;font-family:'Sora',sans-serif;color:var(--ink);}
+.search-box input::placeholder{color:#9BB5B5;}
+.search-sep{width:1px;height:28px;background:var(--border);}
+.spec-sel{border:none;outline:none;font-size:13px;font-family:'Sora',sans-serif;color:var(--mute);background:transparent;padding:6px 10px;cursor:pointer;}
+.loc-btn{padding:8px 12px;background:rgba(0,184,169,0.1);border:none;border-radius:10px;cursor:pointer;font-size:18px;}
+.search-btn{padding:11px 22px;background:var(--teal-g);color:white;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Sora',sans-serif;box-shadow:0 4px 12px rgba(0,184,169,0.3);}
+/* LOC BADGE */
+.loc-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:5px 14px;font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:14px;}
+.hero-pills{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;}
+.hp{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:5px 13px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);}
+
+/* FILTERS ROW */
+.filters-bar{background:white;border-bottom:1px solid var(--border);padding:12px 5%;overflow-x:auto;}
+.filters-inner{display:flex;gap:8px;align-items:center;min-width:max-content;}
+.f-chip{padding:7px 16px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--mute);transition:all .15s;white-space:nowrap;font-family:'Sora',sans-serif;}
+.f-chip.on{border-color:var(--teal);background:rgba(0,184,169,0.06);color:var(--teal2);}
+.f-sep{width:1px;height:24px;background:var(--border);flex-shrink:0;}
+
+/* CONTENT */
+.content{padding:24px 5%;max-width:1200px;margin:0 auto;}
+.results-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.results-hdr h2{font-family:'Instrument Serif',serif;font-size:20px;color:var(--ink);}
+.results-hdr p{font-size:12px;color:var(--mute);}
+.sort-sel{padding:7px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:12px;font-family:'Sora',sans-serif;color:var(--ink2);background:white;cursor:pointer;outline:none;}
+
+/* HOSPITAL CARD */
+.hosp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px;}
+.hcard{background:white;border:1px solid var(--border);border-radius:20px;overflow:hidden;transition:all .22s;cursor:pointer;}
+.hcard:hover{box-shadow:0 10px 32px rgba(0,184,169,0.1),0 2px 8px rgba(0,0,0,0.05);transform:translateY(-3px);}
+/* Card Image */
+.hcard-img{height:150px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.hcard-img-bg{position:absolute;inset:0;object-fit:cover;width:100%;height:100%;}
+.hcard-img-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:56px;}
+.hcard-img-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(9,24,26,0.5));}
+.hcard-free{position:absolute;top:10px;left:10px;background:white;border-radius:8px;padding:3px 9px;font-size:10px;font-weight:700;color:var(--green);box-shadow:0 2px 8px rgba(0,0,0,0.15);}
+.hcard-rating{position:absolute;top:10px;right:10px;background:white;border-radius:8px;padding:3px 9px;font-size:11px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:4px;}
+.hcard-body{padding:16px;}
+.hcard-name{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:3px;}
+.hcard-loc{font-size:12px;color:var(--mute);display:flex;align-items:center;gap:4px;margin-bottom:10px;}
+.hcard-specs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;}
+.spec-tag{font-size:10px;font-weight:600;background:var(--faint);color:var(--ink2);padding:3px 8px;border-radius:7px;}
+.spec-tag.teal{background:rgba(0,184,169,0.08);color:var(--teal2);}
+.hcard-footer{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.hcard-slots{font-size:12px;font-weight:600;}
+.hcard-slots.avail{color:var(--green);}
+.hcard-slots.low{color:#D97706;}
+.hcard-slots.full{color:var(--red);}
+.hcard-docs{font-size:11px;color:var(--mute);}
+.book-btn{width:100%;padding:11px;background:var(--teal-g);color:white;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;transition:all .2s;box-shadow:0 4px 12px rgba(0,184,169,0.22);}
+.book-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,184,169,0.3);}
+.book-btn:disabled{background:#E5E7EB;color:#9CA3AF;cursor:not-allowed;box-shadow:none;transform:none;}
+
+/* BOOKING MODAL */
+.modal{display:none;position:fixed;inset:0;background:rgba(9,24,26,0.6);z-index:100;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);}
+.modal.on{display:flex;}
+.mbox{background:white;border-radius:22px 22px 0 0;width:100%;max-width:540px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;animation:slideUp .3s cubic-bezier(.34,1.2,.64,1);}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.mhandle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:14px auto 0;}
+.mhead{padding:14px 22px 12px;border-bottom:1px solid var(--border);}
+.mhead h3{font-family:'Instrument Serif',serif;font-size:20px;color:var(--ink);}
+.mhead p{font-size:12px;color:var(--mute);margin-top:2px;}
+.mbody{padding:18px 22px;overflow-y:auto;flex:1;}
+.mfoot{padding:12px 22px;border-top:1px solid var(--border);}
+.fg{margin-bottom:13px;}
+.fg label{display:block;font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:5px;letter-spacing:.3px;text-transform:uppercase;}
+.fg input,.fg select{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;font-size:13px;font-family:'Sora',sans-serif;color:var(--ink);outline:none;transition:all .2s;background:var(--faint);}
+.fg input:focus,.fg select:focus{border-color:var(--teal);background:white;}
+/* SLOT GRID */
+.slot-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:6px;}
+.slot{padding:9px 4px;border:1.5px solid var(--border);border-radius:10px;text-align:center;cursor:pointer;font-size:11px;font-weight:600;color:var(--mute);transition:all .15s;}
+.slot:hover{border-color:var(--teal);color:var(--teal);}
+.slot.on{border-color:var(--teal);background:rgba(0,184,169,0.06);color:var(--teal2);}
+.slot.booked{background:var(--faint);color:#CBD5E1;cursor:not-allowed;border-color:var(--border);}
+/* STEP INDICATOR */
+.steps-ind{display:flex;align-items:center;gap:6px;margin-bottom:18px;}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;transition:all .2s;}
+.step-dot.done{background:var(--teal-g);color:white;}
+.step-dot.current{background:var(--ink);color:white;}
+.step-dot.todo{background:var(--faint);color:var(--mute);}
+.step-line{flex:1;height:2px;background:var(--border);}
+.step-line.done{background:var(--teal);}
+/* CONFIRM */
+.confirm-panel{background:rgba(0,184,169,0.05);border:1.5px solid rgba(0,184,169,0.2);border-radius:14px;padding:16px;margin-bottom:14px;}
+.confirm-panel h4{font-size:13px;font-weight:700;color:var(--teal2);margin-bottom:10px;}
+.cr{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;}
+.cr .cl{color:var(--mute);}
+.cr .cv{font-weight:700;color:var(--ink);}
+.free-badge{text-align:center;background:#F0FDF4;border:1px solid #86EFAC;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#166534;margin-bottom:12px;}
+/* SUCCESS */
+.suc-panel{text-align:center;padding:16px 0;}
+.suc-emoji{font-size:58px;margin-bottom:12px;}
+.suc-panel h3{font-family:'Instrument Serif',serif;font-size:24px;color:var(--ink);margin-bottom:8px;}
+.suc-panel p{font-size:13px;color:var(--mute);line-height:1.6;margin-bottom:16px;}
+.bk-id-box{background:rgba(0,184,169,0.06);border:1.5px solid rgba(0,184,169,0.2);border-radius:14px;padding:16px;margin-bottom:16px;}
+.bk-id-box h4{font-size:11px;font-weight:700;color:var(--teal2);letter-spacing:.5px;margin-bottom:6px;}
+.bk-id{font-family:'Instrument Serif',serif;font-size:26px;color:var(--teal);letter-spacing:3px;}
+.bk-id-note{font-size:11px;color:var(--mute);margin-top:3px;}
+.btn-full{width:100%;padding:13px;border:none;border-radius:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;transition:all .2s;}
+.btn-full.teal{background:var(--teal-g);color:white;box-shadow:0 5px 16px rgba(0,184,169,0.28);}
+.btn-full.teal:hover{transform:translateY(-1px);}
+.btn-full.out{background:white;color:var(--mute);border:1.5px solid var(--border);margin-top:8px;}
+.btn-full:disabled{opacity:.6;cursor:not-allowed;transform:none!important;}
+
+/* DOCTOR CARD */
+.dr-card{background:var(--faint);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;cursor:pointer;transition:all .15s;}
+.dr-card:hover,.dr-card.sel{border-color:var(--teal);background:rgba(0,184,169,0.05);}
+.dr-av{width:46px;height:46px;border-radius:12px;background:var(--teal-g);display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:18px;color:white;flex-shrink:0;}
+.dr-name{font-size:13px;font-weight:700;color:var(--ink);}
+.dr-spec{font-size:11px;color:var(--mute);}
+.dr-fee{font-size:11px;font-weight:700;color:var(--green);margin-top:2px;}
+.dr-check{margin-left:auto;width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.dr-card.sel .dr-check{background:var(--teal);border-color:var(--teal);color:white;}
+.dr-check::after{content:'✓';font-size:10px;font-weight:700;color:transparent;}
+.dr-card.sel .dr-check::after{color:white;}
+
+.empty{text-align:center;padding:56px 20px;color:var(--mute);}
+.empty .ei{font-size:48px;margin-bottom:14px;}
+.empty h3{font-size:16px;font-weight:700;color:var(--ink2);margin-bottom:6px;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:white;padding:12px 24px;border-radius:30px;font-size:13px;font-weight:600;z-index:300;display:none;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,0.25);}
+.lo{position:fixed;inset:0;background:rgba(255,255,255,0.95);z-index:200;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.sp{width:36px;height:36px;border:3px solid rgba(0,184,169,0.2);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:600px){.hosp-grid{grid-template-columns:1fr;}.slot-grid{grid-template-columns:repeat(3,1fr);}.search-box{flex-direction:column;align-items:stretch;padding:10px;}.search-box .search-sep{display:none;}}
+</style>
+</head>
+<body>
+<div class="lo" id="lo"><div class="sp"></div><div style="font-size:13px;color:#607B7D;font-weight:500;">Finding hospitals...</div></div>
+<div class="toast" id="toast"></div>
+
+<!-- BOOKING MODAL -->
+<div class="modal" id="bookModal">
+  <div class="mbox">
+    <div class="mhandle"></div>
+    <div class="mhead">
+      <h3 id="bHospName">Book Appointment</h3>
+      <p id="bHospSub">Free · Instant confirmation</p>
+    </div>
+    <div class="mbody" id="bookBody">
+      <!-- STEP 1 -->
+      <div id="bStep1">
+        <div class="steps-ind">
+          <div class="step-dot current" id="sd1">1</div>
+          <div class="step-line" id="sl1"></div>
+          <div class="step-dot todo" id="sd2">2</div>
+          <div class="step-line" id="sl2"></div>
+          <div class="step-dot todo" id="sd3">✓</div>
+        </div>
+        <div class="fg"><label>Choose Doctor</label><div id="drList"></div></div>
+        <div class="fg"><label>Select Date</label><input type="date" id="bDate" min=""/></div>
+        <div class="fg">
+          <label>Available Slots</label>
+          <div class="slot-grid" id="slotGrid">
+            <div style="grid-column:1/-1;text-align:center;padding:16px;font-size:12px;color:var(--mute);">Select a date to see available slots</div>
+          </div>
+        </div>
+        <div class="fg"><label>Reason for Visit</label>
+          <select id="bReason">
+            <option value="general">🩺 General Checkup</option>
+            <option value="followup">🔄 Follow-up Visit</option>
+            <option value="emergency">🚨 Urgent / Emergency</option>
+            <option value="report">📋 Report Discussion</option>
+            <option value="prescription">💊 Prescription Renewal</option>
+            <option value="vaccination">💉 Vaccination</option>
+          </select>
+        </div>
+        <div class="fg"><label>Your Name</label><input type="text" id="bName" placeholder="Full name"/></div>
+        <div class="fg"><label>Phone Number</label><input type="tel" id="bPhone" placeholder="9XXXXXXXXX" maxlength="10"/></div>
+      </div>
+      <!-- STEP 2 CONFIRM -->
+      <div id="bStep2" style="display:none;">
+        <div class="steps-ind">
+          <div class="step-dot done">✓</div>
+          <div class="step-line done"></div>
+          <div class="step-dot current">2</div>
+          <div class="step-line"></div>
+          <div class="step-dot todo">✓</div>
+        </div>
+        <div class="confirm-panel">
+          <h4>📋 Appointment Summary</h4>
+          <div class="cr"><span class="cl">Hospital</span><span class="cv" id="cfH">-</span></div>
+          <div class="cr"><span class="cl">Doctor</span><span class="cv" id="cfD">-</span></div>
+          <div class="cr"><span class="cl">Date</span><span class="cv" id="cfDate">-</span></div>
+          <div class="cr"><span class="cl">Time</span><span class="cv" id="cfTime">-</span></div>
+          <div class="cr"><span class="cl">Reason</span><span class="cv" id="cfR">-</span></div>
+          <div class="cr"><span class="cl">Patient</span><span class="cv" id="cfP">-</span></div>
+        </div>
+        <div class="free-badge">✅ 100% FREE — No charges whatsoever</div>
+        <div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;padding:10px 13px;font-size:12px;color:#92400E;">⏰ Please arrive 10 minutes early with a valid ID.</div>
+      </div>
+      <!-- STEP 3 SUCCESS -->
+      <div id="bStep3" style="display:none;" class="suc-panel">
+        <div class="suc-emoji">🎉</div>
+        <h3>Appointment Confirmed!</h3>
+        <div class="bk-id-box">
+          <h4>YOUR BOOKING ID</h4>
+          <div class="bk-id" id="bkId">BK-XXXXX</div>
+          <div class="bk-id-note">📸 Screenshot karo — hospital mein dikhana hoga</div>
+        </div>
+        <p>Aapki appointment confirm ho gayi hai. Hospital mein apna Booking ID aur phone number batao.</p>
+        <a href="/dashboard" style="display:inline-block;padding:12px 24px;background:var(--teal-g);color:white;border-radius:12px;font-size:13px;font-weight:700;text-decoration:none;">Go to Dashboard →</a>
+      </div>
+    </div>
+    <div class="mfoot" id="bFoot">
+      <button class="btn-full teal" id="bNextBtn" onclick="bookNext()">Next →</button>
+      <button class="btn-full out" onclick="closeBook()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<nav>
+  <div class="nav-logo"><div class="logo-mark">N</div><div class="logo-text">Nirog<em>AI</em></div></div>
+  <div class="nav-right">
+    <a href="/dashboard" class="n-btn out">← Dashboard</a>
+    <a href="/doctor-dashboard" class="n-btn teal" id="drLink" style="display:none;">Register Hospital</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div class="hero-tag">🏥 Free Hospital Booking</div>
+    <h1>Find Hospitals &<br><em>Book Free Slots</em></h1>
+    <p>Real-time slot availability · Instant confirmation · Zero charges</p>
+    <div class="loc-badge" id="locBadge">📍 Detecting your location...</div>
+    <div class="search-box">
+      <span style="font-size:20px;">🔍</span>
+      <input type="text" id="srchInp" placeholder="Search hospital, city, specialty..." oninput="doFilter()"/>
+      <div class="search-sep"></div>
+      <select class="spec-sel" id="specSel" onchange="doFilter()">
+        <option value="">All Specialties</option>
+        <option>General Physician</option>
+        <option>Cardiologist</option>
+        <option>Gynecologist</option>
+        <option>Pediatrician</option>
+        <option>Orthopedic</option>
+        <option>ENT Specialist</option>
+        <option>Neurologist</option>
+        <option>Diabetologist</option>
+        <option>Dermatologist</option>
+        <option>Psychiatrist</option>
+      </select>
+      <button class="loc-btn" onclick="detectLocation()" title="Use my location">📍</button>
+      <button class="search-btn" onclick="doFilter()">Search</button>
+    </div>
+    <div class="hero-pills">
+      <span class="hp" id="hospCountPill">Loading...</span>
+      <span class="hp">✅ 100% Free Booking</span>
+      <span class="hp">⚡ Instant Confirmation</span>
+      <span class="hp">📱 No App Needed</span>
+    </div>
+  </div>
+</div>
+
+<div class="filters-bar">
+  <div class="filters-inner">
+    <button class="f-chip on" onclick="specFilter('',this)">All</button>
+    <div class="f-sep"></div>
+    <button class="f-chip" onclick="specFilter('General Physician',this)">🩺 General</button>
+    <button class="f-chip" onclick="specFilter('Cardiologist',this)">❤️ Cardiology</button>
+    <button class="f-chip" onclick="specFilter('Gynecologist',this)">👩‍⚕️ Gynecology</button>
+    <button class="f-chip" onclick="specFilter('Pediatrician',this)">👶 Pediatric</button>
+    <button class="f-chip" onclick="specFilter('Orthopedic',this)">🦴 Orthopedic</button>
+    <button class="f-chip" onclick="specFilter('ENT Specialist',this)">👂 ENT</button>
+    <button class="f-chip" onclick="specFilter('Neurologist',this)">🧠 Neurology</button>
+    <button class="f-chip" onclick="specFilter('Diabetologist',this)">🩸 Diabetes</button>
+    <button class="f-chip" onclick="specFilter('Dermatologist',this)">🌿 Skin</button>
+  </div>
+</div>
+
+<div class="content">
+  <div class="results-hdr">
+    <div><h2>Hospitals Near You</h2><p id="resCount">Loading results...</p></div>
+    <select class="sort-sel" id="sortSel" onchange="doSort()">
+      <option value="rating">⭐ Top Rated</option>
+      <option value="slots">🟢 Most Available</option>
+      <option value="nearby">📍 Nearest First</option>
+    </select>
+  </div>
+  <div class="hosp-grid" id="hospGrid">
+    <div class="empty"><div class="ei">🔍</div><h3>Loading hospitals...</h3></div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://snsmcmxxlsolnkeukyog.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuc21jbXh4bHNvbG5rZXVreW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDY1MTEsImV4cCI6MjA4ODEyMjUxMX0.svnnhqmMTdTZOmdr0TcKi3yRi_hdPeyAUYz0sOOExHY';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+let allH=[],filtered=[],currentH=null,selSlot='',selDrIdx=0,bookStep=1,currentUser=null,userCity='';
+const SLOTS=['8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM'];
+const EMOJIS=['🏥','🏨','🏛️','💊','🌿','⛰️','🩺','🫀'];
+
+window.addEventListener('DOMContentLoaded',async()=>{
+  document.getElementById('bDate').min=new Date().toISOString().split('T')[0];
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){
+    currentUser=session.user;
+    const {data:dr}=await sb.from('doctors').select('id').eq('user_id',session.user.id).maybeSingle().catch(()=>({data:null}));
+    if(dr)document.getElementById('drLink').style.display='block';
+    const {data:p}=await sb.from('profiles').select('full_name,phone,city').eq('id',session.user.id).maybeSingle().catch(()=>({data:null}));
+    if(p){if(p.full_name)document.getElementById('bName').value=p.full_name;if(p.phone)document.getElementById('bPhone').value=p.phone;if(p.city)userCity=p.city;}
+  }
+  detectLocation();
+  await loadHospitals();
+  document.getElementById('lo').style.display='none';
+});
+
+async function detectLocation(){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(async pos=>{
+      try{
+        const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`);
+        const d=await r.json();
+        const city=d.address.city||d.address.town||d.address.village||d.address.state||'Your location';
+        userCity=city;
+        document.getElementById('locBadge').innerHTML='📍 '+city;
+        doFilter();
+      }catch{document.getElementById('locBadge').innerHTML='📍 Location detected';}
+    },()=>{document.getElementById('locBadge').innerHTML='📍 Enable location for nearby hospitals';});
+  }
+}
+
+async function loadHospitals(){
+  const {data}=await sb.from('hospitals').select('*').eq('is_active',true).order('rating',{ascending:false}).catch(()=>({data:null}));
+  allH=data&&data.length?data:getDemoH();
+  // Load doctors for each hospital
+  for(const h of allH){
+    if(h.id&&!h.id.startsWith('demo')){
+      const {data:docs}=await sb.from('doctors').select('id,full_name,specialization,consultation_fee').eq('hospital_id',h.id).catch(()=>({data:[]}));
+      h.doctors=docs||[];
+    }
+  }
+  filtered=[...allH];
+  document.getElementById('hospCountPill').textContent=allH.length+' Hospitals';
+  render(filtered);
+}
+
+function getDemoH(){
+  return[
+    {id:'d1',name:'Apollo Clinic',city:'Dehradun',address:'Rajpur Road, Dehradun',emoji:'🏥',specialties:['General Physician','Cardiologist'],rating:4.8,total_slots:20,booked_slots:8,is_free:true,about:'Premium multi-specialty clinic with state-of-the-art facilities.',photos:[],doctors:[{full_name:'Dr. Anjali Verma',specialization:'General Physician',consultation_fee:0},{full_name:'Dr. Rakesh Kumar',specialization:'Cardiologist',consultation_fee:0}]},
+    {id:'d2',name:'Max Health Centre',city:'Dehradun',address:'Clock Tower Area, Dehradun',emoji:'🏨',specialties:['Orthopedic','Pediatrician'],rating:4.6,total_slots:16,booked_slots:5,is_free:true,about:'Expert orthopedic and pediatric care.',photos:[],doctors:[{full_name:'Dr. Priya Singh',specialization:'Pediatrician',consultation_fee:0}]},
+    {id:'d3',name:'Doon Medical Hub',city:'Dehradun',address:'Patel Nagar, Dehradun',emoji:'🏛️',specialties:['General Physician','Gynecologist','Neurologist'],rating:4.5,total_slots:24,booked_slots:14,is_free:true,about:'Comprehensive care for women and neurology.',photos:[],doctors:[{full_name:'Dr. Meena Sharma',specialization:'Gynecologist',consultation_fee:0},{full_name:'Dr. Vijay Rawat',specialization:'Neurologist',consultation_fee:0}]},
+    {id:'d4',name:'Life Care Hospital',city:'Haridwar',address:'Jwalapur, Haridwar',emoji:'💊',specialties:['General Physician','Diabetologist'],rating:4.7,total_slots:18,booked_slots:3,is_free:true,about:'Specialized diabetes and endocrinology centre.',photos:[],doctors:[{full_name:'Dr. Sandeep Gupta',specialization:'Diabetologist',consultation_fee:0}]},
+    {id:'d5',name:'City ENT & Skin Centre',city:'Rishikesh',address:'Muni Ki Reti, Rishikesh',emoji:'🌿',specialties:['ENT Specialist','Dermatologist'],rating:4.4,total_slots:12,booked_slots:7,is_free:true,about:'Specialist ENT and dermatology services.',photos:[],doctors:[{full_name:'Dr. Arun Thakur',specialization:'ENT Specialist',consultation_fee:0}]},
+    {id:'d6',name:'Himalayan Heart Institute',city:'Dehradun',address:'Vasant Vihar, Dehradun',emoji:'🫀',specialties:['Cardiologist','Neurologist'],rating:4.9,total_slots:20,booked_slots:9,is_free:true,about:'Leading cardiac and neuro care in Uttarakhand.',photos:[],doctors:[{full_name:'Dr. Deepak Arora',specialization:'Cardiologist',consultation_fee:0}]},
+    {id:'d7',name:'Shishu Balya Clinic',city:'Dehradun',address:'Dalanwala, Dehradun',emoji:'👶',specialties:['Pediatrician'],rating:4.6,total_slots:14,booked_slots:6,is_free:true,about:'Dedicated pediatric care clinic.',photos:[],doctors:[{full_name:'Dr. Sunita Rawat',specialization:'Pediatrician',consultation_fee:0}]},
+    {id:'d8',name:'Mind & Spine Centre',city:'Haridwar',address:'Kankhal, Haridwar',emoji:'🧠',specialties:['Neurologist','Psychiatrist'],rating:4.3,total_slots:10,booked_slots:4,is_free:true,about:'Neurological and mental wellness care.',photos:[],doctors:[{full_name:'Dr. Ritu Sharma',specialization:'Psychiatrist',consultation_fee:0}]},
+  ];
+}
+
+let activeSpec='';
+function specFilter(spec,el){
+  activeSpec=spec;
+  document.querySelectorAll('.f-chip').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('specSel').value=spec;
+  doFilter();
+}
+function doFilter(){
+  const q=document.getElementById('srchInp').value.toLowerCase();
+  const sp=(document.getElementById('specSel').value||activeSpec).toLowerCase();
+  filtered=allH.filter(h=>{
+    const mq=!q||(h.name||'').toLowerCase().includes(q)||(h.city||'').toLowerCase().includes(q)||(h.address||'').toLowerCase().includes(q);
+    const ms=!sp||(h.specialties||[]).some(s=>s.toLowerCase().includes(sp));
+    return mq&&ms;
+  });
+  doSort();
+}
+function doSort(){
+  const s=document.getElementById('sortSel').value;
+  if(s==='rating')filtered.sort((a,b)=>(b.rating||0)-(a.rating||0));
+  else if(s==='slots')filtered.sort((a,b)=>((b.total_slots||20)-(b.booked_slots||0))-((a.total_slots||20)-(a.booked_slots||0)));
+  else if(s==='nearby'&&userCity){
+    filtered.sort((a,b)=>{
+      const aM=(a.city||'').toLowerCase()===userCity.toLowerCase()?0:1;
+      const bM=(b.city||'').toLowerCase()===userCity.toLowerCase()?0:1;
+      return aM-bM;
+    });
+  }
+  render(filtered);
+}
+function render(hosps){
+  document.getElementById('resCount').textContent=hosps.length+' hospital'+(hosps.length!==1?'s':'')+' found'+(userCity?' near '+userCity:'');
+  if(!hosps.length){document.getElementById('hospGrid').innerHTML='<div class="empty" style="grid-column:1/-1;"><div class="ei">🔍</div><h3>No hospitals found</h3><p>Try different search or filter</p></div>';return;}
+  document.getElementById('hospGrid').innerHTML=hosps.map(h=>{
+    const avail=(h.total_slots||20)-(h.booked_slots||0);
+    const docs=(h.doctors||[]);
+    const specs=(h.specialties||[]);
+    const slotsClass=avail>5?'avail':avail>0?'low':'full';
+    const slotsText=avail>0?avail+' slots available':'Fully booked';
+    return`<div class="hcard" onclick="void(0)">
+      <div class="hcard-img">
+        ${h.photo_url?`<img class="hcard-img-bg" src="${h.photo_url}" alt="${h.name}" loading="lazy"/>`:`<div class="hcard-img-fallback">${h.emoji||EMOJIS[Math.floor(Math.random()*EMOJIS.length)]}</div>`}
+        <div class="hcard-img-overlay"></div>
+        <span class="hcard-free">✅ FREE</span>
+        <div class="hcard-rating">⭐ ${(h.rating||4.5).toFixed(1)}</div>
+      </div>
+      <div class="hcard-body">
+        <div class="hcard-name">${h.name}</div>
+        <div class="hcard-loc">📍 ${h.address||h.city}</div>
+        <div class="hcard-specs">
+          ${specs.slice(0,3).map(s=>`<span class="spec-tag teal">${s}</span>`).join('')}
+          ${docs.length>0?`<span class="spec-tag">👨‍⚕️ ${docs.length} Doctor${docs.length>1?'s':''}</span>`:''}
+        </div>
+        <div class="hcard-footer">
+          <div class="hcard-slots ${slotsClass}">${slotsText}</div>
+          ${h.about?`<div class="hcard-docs" style="max-width:120px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${h.about}</div>`:''}
+        </div>
+        <button class="book-btn" onclick="openBook('${h.id}')" ${avail<=0?'disabled':''}>
+          ${avail>0?'📅 Book Free Appointment':'⏳ No Slots Today'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── BOOKING ───────────────────────────────────────────
+function openBook(hospId){
+  currentH=allH.find(h=>h.id===hospId);if(!currentH)return;
+  bookStep=1;selSlot='';selDrIdx=0;
+  document.getElementById('bHospName').textContent=currentH.name;
+  document.getElementById('bHospSub').textContent='Free · No charges · '+currentH.city;
+  document.getElementById('bStep1').style.display='block';
+  document.getElementById('bStep2').style.display='none';
+  document.getElementById('bStep3').style.display='none';
+  document.getElementById('bFoot').style.display='flex';
+  document.getElementById('bNextBtn').textContent='Next →';
+  document.getElementById('bNextBtn').disabled=false;
+  // Build doctor list
+  const docs=currentH.doctors||[];
+  document.getElementById('drList').innerHTML=docs.length?docs.map((d,i)=>`<div class="dr-card${i===0?' sel':''}" onclick="selDr(this,${i})"><div class="dr-av">${(d.full_name||'D')[0]}</div><div><div class="dr-name">${d.full_name||'Doctor'}</div><div class="dr-spec">${d.specialization||'General'}</div><div class="dr-fee">Free Consultation</div></div><div class="dr-check"></div></div>`).join(''):'<div style="font-size:13px;color:var(--mute);padding:12px;text-align:center;">General consultation available</div>';
+  if(docs.length>0)selDrIdx=0;
+  // Reset slots
+  document.getElementById('slotGrid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:16px;font-size:12px;color:var(--mute);">Select a date to see available slots</div>';
+  document.getElementById('bDate').onchange=loadSlots;
+  document.getElementById('bookModal').classList.add('on');
+}
+function selDr(el,idx){selDrIdx=idx;document.querySelectorAll('.dr-card').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');}
+async function loadSlots(){
+  const date=document.getElementById('bDate').value;if(!date)return;
+  const {data:booked}=await sb.from('hospital_bookings').select('slot_time').eq('hospital_id',currentH.id).eq('booking_date',date).eq('status','confirmed').catch(()=>({data:[]}));
+  const bSet=new Set((booked||[]).map(b=>b.slot_time));
+  document.getElementById('slotGrid').innerHTML=SLOTS.map(s=>{
+    const isB=bSet.has(s);
+    return`<div class="slot${isB?' booked':''}" ${isB?'':'onclick="pickSlot(this,\''+s+'\')"'}>${s}</div>`;
+  }).join('');
+  selSlot='';
+}
+function pickSlot(el,s){selSlot=s;document.querySelectorAll('.slot:not(.booked)').forEach(x=>x.classList.remove('on'));el.classList.add('on');}
+function bookNext(){
+  if(bookStep===1){
+    if(!document.getElementById('bDate').value){toast('⚠️ Date choose karo');return;}
+    if(!selSlot){toast('⚠️ Time slot choose karo');return;}
+    if(!document.getElementById('bName').value.trim()){toast('⚠️ Apna naam daalo');return;}
+    if(document.getElementById('bPhone').value.trim().length<10){toast('⚠️ Valid phone number daalo');return;}
+    const docs=currentH.doctors||[];
+    const docName=docs[selDrIdx]?.full_name||'General Doctor';
+    const dateStr=new Date(document.getElementById('bDate').value).toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+    document.getElementById('cfH').textContent=currentH.name;
+    document.getElementById('cfD').textContent=docName;
+    document.getElementById('cfDate').textContent=dateStr;
+    document.getElementById('cfTime').textContent=selSlot;
+    document.getElementById('cfR').textContent=document.getElementById('bReason').options[document.getElementById('bReason').selectedIndex].text;
+    document.getElementById('cfP').textContent=document.getElementById('bName').value;
+    document.getElementById('bStep1').style.display='none';
+    document.getElementById('bStep2').style.display='block';
+    document.getElementById('bNextBtn').textContent='✅ Confirm Booking';
+    bookStep=2;
+  }else if(bookStep===2){confirmBook();}
+}
+async function confirmBook(){
+  document.getElementById('bNextBtn').disabled=true;
+  document.getElementById('bNextBtn').textContent='Booking...';
+  const bkId='BK-'+Math.random().toString(36).substr(2,6).toUpperCase();
+  const docs=currentH.doctors||[];
+  const doc=docs[selDrIdx]||{};
+  await sb.from('hospital_bookings').insert({
+    booking_id:bkId,hospital_id:currentH.id,hospital_name:currentH.name,
+    doctor_id:doc.id||null,doctor_name:doc.full_name||'General Doctor',
+    patient_id:currentUser?.id||null,patient_name:document.getElementById('bName').value.trim(),
+    patient_phone:document.getElementById('bPhone').value.trim(),
+    booking_date:document.getElementById('bDate').value,slot_time:selSlot,
+    reason:document.getElementById('bReason').value,status:'confirmed',is_free:true,
+    created_at:new Date().toISOString()
+  }).catch(()=>{});
+  document.getElementById('bkId').textContent=bkId;
+  document.getElementById('bStep2').style.display='none';
+  document.getElementById('bStep3').style.display='block';
+  document.getElementById('bFoot').style.display='none';
+}
+function closeBook(){document.getElementById('bookModal').classList.remove('on');}
+document.getElementById('bookModal').addEventListener('click',e=>{if(e.target===document.getElementById('bookModal'))closeBook();});
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+</script>
+</body>
+</html>

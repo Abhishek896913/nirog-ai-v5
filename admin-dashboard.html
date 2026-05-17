@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NirogAI — Admin Dashboard</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--amber:#D97706;--amber-soft:#FFFBEB;--amber-mid:#FCD34D;--teal:#0AB5A0;--purple:#7C3AED;--ink:#0D1B1A;--ink-mid:#2D4A47;--ink-mute:#6B8F8C;--ink-faint:#E2EDED;--white:#fff;--bg:#F4FAF9;--red:#EF4444;--green:#10B981;--sidebar:260px;}
+html,body{height:100%;font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--ink);overflow:hidden;}
+.app{display:flex;height:100vh;}
+/* SIDEBAR */
+.sb{width:var(--sidebar);flex-shrink:0;background:#1C0A00;display:flex;flex-direction:column;padding:24px 0;}
+.sb-logo{display:flex;align-items:center;gap:10px;padding:0 20px 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:16px;}
+.sb-logo .dot{width:36px;height:36px;border-radius:50%;background:var(--amber);display:flex;align-items:center;justify-content:center;font-size:16px;color:white;font-weight:700;}
+.sb-logo .brand{font-family:'Instrument Serif',serif;font-size:17px;color:white;}
+.sb-logo .brand em{color:#FCD34D;font-style:italic;}
+.sb-logo .badge{font-size:9px;font-weight:700;background:var(--amber);color:white;padding:2px 7px;border-radius:8px;margin-top:2px;}
+.sb-sec{padding:0 12px;margin-bottom:8px;}
+.sb-lbl{font-size:10px;font-weight:700;color:rgba(255,255,255,.35);letter-spacing:.8px;text-transform:uppercase;padding:0 8px;margin-bottom:5px;}
+.sb-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:500;color:rgba(255,255,255,.55);text-decoration:none;transition:all .15s;}
+.sb-item:hover{background:rgba(255,255,255,.07);}
+.sb-item.active{background:var(--amber);color:white;font-weight:600;}
+.sb-item .ic{width:20px;text-align:center;font-size:15px;}
+.sb-item .cnt{margin-left:auto;background:var(--red);color:white;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;}
+.sb-foot{margin-top:auto;padding:16px 20px 0;border-top:1px solid rgba(255,255,255,.08);}
+.sb-user{display:flex;align-items:center;gap:10px;cursor:pointer;}
+.sb-av{width:34px;height:34px;border-radius:50%;background:var(--amber);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;}
+.sb-name{font-size:13px;font-weight:600;color:white;}
+.sb-role{font-size:11px;color:#FCD34D;font-weight:600;}
+/* MAIN */
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--white);border-bottom:1px solid var(--ink-faint);position:sticky;top:0;z-index:5;flex-shrink:0;}
+.topbar h1{font-family:'Instrument Serif',serif;font-size:19px;font-weight:400;}
+.topbar p{font-size:12px;color:var(--ink-mute);margin-top:1px;}
+.tb-btn{padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:'Plus Jakarta Sans',sans-serif;}
+.tb-btn.amber{background:var(--amber);color:white;}
+.content{padding:20px 24px;display:flex;flex-direction:column;gap:18px;}
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.stat{background:var(--white);border-radius:14px;padding:16px;border:1px solid var(--ink-faint);}
+.stat .num{font-family:'Instrument Serif',serif;font-size:30px;color:var(--amber);}
+.stat .lbl{font-size:12px;color:var(--ink-mute);margin-top:3px;}
+/* SECTION */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sec-hdr h2{font-size:14px;font-weight:700;color:var(--ink);}
+.sec-btn{padding:7px 14px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:'Plus Jakarta Sans',sans-serif;}
+.sec-btn.amber{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber-mid);}
+.sec-btn.red{background:#FEE2E2;color:var(--red);}
+.sec-btn.green{background:#D1FAE5;color:#059669;}
+/* TABLE */
+.tbl{background:var(--white);border-radius:14px;border:1px solid var(--ink-faint);overflow:hidden;}
+.tbl-row{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--ink-faint);gap:12px;transition:background .15s;}
+.tbl-row:last-child{border-bottom:none;}
+.tbl-row:hover{background:var(--bg);}
+.tbl-hdr{background:var(--bg);font-size:10px;font-weight:700;color:var(--ink-mute);letter-spacing:.5px;text-transform:uppercase;}
+.tbl-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0AB5A0,#089486);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;}
+.tbl-av.amber{background:linear-gradient(135deg,#D97706,#B45309);}
+.tbl-av.purple{background:linear-gradient(135deg,#7C3AED,#5B21B6);}
+.tbl-name{font-size:13px;font-weight:600;color:var(--ink);}
+.tbl-sub{font-size:11px;color:var(--ink-mute);}
+.tbl-col{flex:1;font-size:12px;color:var(--ink-mid);}
+.tbl-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;}
+.tbl-badge.verified{background:#D1FAE5;color:#065F46;}
+.tbl-badge.pending{background:#FEF3C7;color:#92400E;}
+.tbl-badge.active{background:#DBEAFE;color:#1D4ED8;}
+.tbl-actions{display:flex;gap:6px;}
+.act-btn{padding:5px 10px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:'Plus Jakarta Sans',sans-serif;}
+.act-btn.v{background:#D1FAE5;color:#059669;}
+.act-btn.r{background:#FEE2E2;color:var(--red);}
+.act-btn.e{background:var(--amber-soft);color:var(--amber);}
+/* MODAL */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:20px;}
+.modal.show{display:flex;}
+.modal-box{background:var(--white);border-radius:18px;padding:24px;width:100%;max-width:440px;max-height:85vh;overflow-y:auto;}
+.modal-title{font-family:'Instrument Serif',serif;font-size:20px;margin-bottom:4px;}
+.modal-sub{font-size:13px;color:var(--ink-mute);margin-bottom:18px;}
+.fg{margin-bottom:12px;}
+.fg label{display:block;font-size:10.5px;font-weight:700;color:var(--ink-mid);margin-bottom:4px;letter-spacing:.3px;text-transform:uppercase;}
+.fg input,.fg select,.fg textarea{width:100%;padding:10px 13px;border:1.5px solid var(--ink-faint);border-radius:10px;font-size:13px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);outline:none;transition:all .2s;background:var(--bg);}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--amber);background:var(--white);}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.modal-btns{display:flex;gap:10px;margin-top:16px;}
+.m-cancel{flex:1;padding:11px;border-radius:10px;border:1.5px solid var(--ink-faint);background:transparent;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink-mute);font-family:'Plus Jakarta Sans',sans-serif;}
+.m-save{flex:2;padding:11px;border-radius:10px;border:none;background:var(--amber);color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;}
+.m-save:disabled{opacity:.6;cursor:not-allowed;}
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0D1B1A;color:white;padding:11px 22px;border-radius:30px;font-size:13px;font-weight:600;z-index:300;display:none;white-space:nowrap;}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.9);z-index:200;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.spinner{width:34px;height:34px;border:3px solid rgba(217,119,6,.2);border-top-color:var(--amber);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@media(max-width:768px){.sb{display:none;}.stats-row{grid-template-columns:repeat(2,1fr);}.content{padding:14px 16px;}}
+</style>
+</head>
+<body>
+<div class="loading-overlay" id="lo"><div class="spinner"></div><div style="font-size:13px;color:#6B8F8C;">Loading admin panel...</div></div>
+<div class="toast" id="toast"></div>
+
+<!-- ADD DOCTOR MODAL -->
+<div class="modal" id="addDrModal">
+  <div class="modal-box">
+    <div class="modal-title">➕ Add / Verify Doctor</div>
+    <div class="modal-sub">Doctor ko manually add karo ya existing ko verify karo</div>
+    <div class="frow">
+      <div class="fg"><label>First Name</label><input id="aFn" placeholder="Dr. Anjali"/></div>
+      <div class="fg"><label>Last Name</label><input id="aLn" placeholder="Verma"/></div>
+    </div>
+    <div class="fg"><label>Email</label><input type="email" id="aEm" placeholder="dr@hospital.com"/></div>
+    <div class="fg"><label>Phone</label><input type="tel" id="aPh" placeholder="9XXXXXXXXX" maxlength="10"/></div>
+    <div class="frow">
+      <div class="fg">
+        <label>Specialization</label>
+        <select id="aSp">
+          <option value="">Select...</option>
+          <option>General Physician</option><option>Cardiologist</option>
+          <option>Diabetologist</option><option>Pulmonologist</option>
+          <option>Neurologist</option><option>Pediatrician</option>
+          <option>Gynecologist</option><option>Orthopedic</option><option>Other</option>
+        </select>
+      </div>
+      <div class="fg"><label>Experience (yrs)</label><input type="number" id="aEx" placeholder="5"/></div>
+    </div>
+    <div class="fg"><label>Consultation Fee (₹)</label><input type="number" id="aFee" placeholder="e.g. 300"/></div>
+    <div class="fg"><label>Medical Reg. No.</label><input id="aRg" placeholder="MCI / State Council No."/></div>
+    <div class="fg"><label>Hospital / Clinic</label><input id="aHosp" placeholder="Apollo Hospital, Delhi"/></div>
+    <div class="fg"><label>About Doctor (1-2 lines)</label><textarea id="aAbout" rows="2" placeholder="MBBS, MD - 10 years exp in cardiology..."></textarea></div>
+    <div class="fg">
+      <label>Status</label>
+      <select id="aStatus">
+        <option value="verified">✅ Verified</option>
+        <option value="pending">⏳ Pending Review</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="m-cancel" onclick="closeModal('addDrModal')">Cancel</button>
+      <button class="m-save" id="addDrBtn" onclick="addDoctor()">Add & Verify Doctor</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW DOCTOR MODAL -->
+<div class="modal" id="viewDrModal">
+  <div class="modal-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div class="modal-title" id="vdName">Doctor Details</div>
+      <button onclick="closeModal('viewDrModal')" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink-mute);">✕</button>
+    </div>
+    <div id="vdBody">Loading...</div>
+    <div class="modal-btns">
+      <button class="m-cancel" onclick="closeModal('viewDrModal')">Close</button>
+      <button class="m-save" id="vdVerifyBtn" onclick="verifyDoctorFromView()">✅ Verify Doctor</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="sb">
+    <div class="sb-logo">
+      <div class="dot">🛡️</div>
+      <div><div class="brand">Nirog<em>AI</em></div><div class="badge">ADMIN</div></div>
+    </div>
+    <div class="sb-sec">
+      <div class="sb-lbl">Overview</div>
+      <a class="sb-item active" onclick="showTab('overview')"><span class="ic">📊</span> Dashboard</a>
+      <a class="sb-item" onclick="showTab('doctors')"><span class="ic">👨‍⚕️</span> Doctors <span class="cnt" id="pendingCnt">0</span></a>
+      <a class="sb-item" onclick="showTab('patients')"><span class="ic">🏥</span> Patients</a>
+      <a class="sb-item" onclick="showTab('reports')"><span class="ic">📋</span> Reports</a>
+    </div>
+    <div class="sb-sec">
+      <div class="sb-lbl">System</div>
+      <a class="sb-item" onclick="logout()"><span class="ic">🚪</span> Logout</a>
+    </div>
+    <div class="sb-foot">
+      <div class="sb-user">
+        <div class="sb-av">A</div>
+        <div><div class="sb-name">Admin</div><div class="sb-role">🛡️ Full Access</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div><h1>Admin Dashboard 🛡️</h1><p id="adminGreet">Welcome, Admin</p></div>
+      <button class="tb-btn amber" onclick="openModal('addDrModal')">➕ Add Doctor</button>
+    </div>
+    <div class="content">
+
+      <!-- OVERVIEW TAB -->
+      <div id="tab-overview">
+        <div class="stats-row">
+          <div class="stat"><div class="num" id="stTotal">0</div><div class="lbl">Total Doctors</div></div>
+          <div class="stat"><div class="num" id="stVerified">0</div><div class="lbl">Verified Doctors</div></div>
+          <div class="stat"><div class="num" id="stPatients">0</div><div class="lbl">Total Patients</div></div>
+          <div class="stat"><div class="num" id="stPending">0</div><div class="lbl">Pending Verifications</div></div>
+        </div>
+
+        <!-- Pending doctors quick view -->
+        <div>
+          <div class="sec-hdr">
+            <h2>⏳ Pending Doctor Verifications</h2>
+            <button class="sec-btn amber" onclick="showTab('doctors')">View All →</button>
+          </div>
+          <div class="tbl" id="pendingList">
+            <div style="padding:24px;text-align:center;color:var(--ink-mute);font-size:13px;">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCTORS TAB -->
+      <div id="tab-doctors" style="display:none;">
+        <div class="sec-hdr">
+          <h2>👨‍⚕️ All Doctors</h2>
+          <button class="tb-btn amber" onclick="openModal('addDrModal')">➕ Add Doctor</button>
+        </div>
+        <div class="tbl" id="allDrList">
+          <div style="padding:24px;text-align:center;color:var(--ink-mute);font-size:13px;">Loading...</div>
+        </div>
+      </div>
+
+      <!-- PATIENTS TAB -->
+      <div id="tab-patients" style="display:none;">
+        <div class="sec-hdr"><h2>🏥 All Patients</h2></div>
+        <div class="tbl" id="allPatList">
+          <div style="padding:24px;text-align:center;color:var(--ink-mute);font-size:13px;">Loading...</div>
+        </div>
+      </div>
+
+      <!-- REPORTS TAB -->
+      <div id="tab-reports" style="display:none;">
+        <div class="sec-hdr"><h2>📋 Platform Reports</h2></div>
+        <div style="background:var(--white);border-radius:14px;border:1px solid var(--ink-faint);padding:20px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" id="reportCards">
+            <div style="padding:16px;background:var(--bg);border-radius:12px;">
+              <div style="font-size:12px;font-weight:700;color:var(--ink-mute);margin-bottom:6px;">HEALTH CARDS TODAY</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:28px;color:var(--teal);" id="rCards">-</div>
+            </div>
+            <div style="padding:16px;background:var(--bg);border-radius:12px;">
+              <div style="font-size:12px;font-weight:700;color:var(--ink-mute);margin-bottom:6px;">SHARED WITH DOCTORS</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:28px;color:var(--purple);" id="rShared">-</div>
+            </div>
+            <div style="padding:16px;background:var(--bg);border-radius:12px;">
+              <div style="font-size:12px;font-weight:700;color:var(--ink-mute);margin-bottom:6px;">PRESCRIPTIONS ISSUED</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:28px;color:var(--amber);" id="rPrescriptions">-</div>
+            </div>
+            <div style="padding:16px;background:var(--bg);border-radius:12px;">
+              <div style="font-size:12px;font-weight:700;color:var(--ink-mute);margin-bottom:6px;">LAB REPORTS UPLOADED</div>
+              <div style="font-family:'Instrument Serif',serif;font-size:28px;color:#059669;" id="rLabs">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://snsmcmxxlsolnkeukyog.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuc21jbXh4bHNvbG5rZXVreW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDY1MTEsImV4cCI6MjA4ODEyMjUxMX0.svnnhqmMTdTZOmdr0TcKi3yRi_hdPeyAUYz0sOOExHY';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+let currentAdmin=null;
+let viewingDrId=null;
+
+window.addEventListener('DOMContentLoaded',async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){window.location.href='/auth';return;}
+  currentAdmin=session.user;
+  // Verify admin
+  const {data:adm}=await sb.from('admins').select('id').eq('user_id',currentAdmin.id).maybeSingle();
+  if(!adm){await sb.auth.signOut();window.location.href='/auth';return;}
+  const hr=new Date().getHours();
+  const g=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  document.getElementById('adminGreet').textContent=`${g}, Admin 👋`;
+  await loadAll();
+  document.getElementById('lo').style.display='none';
+});
+
+async function loadAll(){
+  await Promise.all([loadDoctors(),loadPatients(),loadReports()]);
+}
+
+let allDoctors=[];
+async function loadDoctors(){
+  const {data}=await sb.from('doctors').select('*').order('created_at',{ascending:false});
+  allDoctors=data||[];
+  const pending=allDoctors.filter(d=>d.status!=='verified');
+  document.getElementById('stTotal').textContent=allDoctors.length;
+  document.getElementById('stVerified').textContent=allDoctors.filter(d=>d.status==='verified').length;
+  document.getElementById('stPending').textContent=pending.length;
+  document.getElementById('pendingCnt').textContent=pending.length||'';
+  renderPendingList(pending.slice(0,5));
+  renderAllDoctors(allDoctors);
+}
+async function loadPatients(){
+  const {count}=await sb.from('profiles').select('id',{count:'exact',head:true});
+  document.getElementById('stPatients').textContent=count||0;
+  const {data:pats}=await sb.from('profiles').select('full_name,phone,age,blood_group,created_at').order('created_at',{ascending:false}).limit(50);
+  renderPatients(pats||[]);
+}
+async function loadReports(){
+  const today=new Date().toISOString().split('T')[0];
+  const {count:c1}=await sb.from('nadibox_cards').select('id',{count:'exact',head:true}).gte('recorded_at',today);
+  const {count:c2}=await sb.from('shared_cards').select('id',{count:'exact',head:true});
+  const {count:c3}=await sb.from('prescriptions').select('id',{count:'exact',head:true});
+  const {count:c4}=await sb.from('lab_reports').select('id',{count:'exact',head:true});
+  document.getElementById('rCards').textContent=c1||0;
+  document.getElementById('rShared').textContent=c2||0;
+  document.getElementById('rPrescriptions').textContent=c3||0;
+  document.getElementById('rLabs').textContent=c4||0;
+}
+
+function renderPendingList(docs){
+  const el=document.getElementById('pendingList');
+  if(!docs.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--ink-mute);font-size:13px;">✅ No pending verifications</div>';return;}
+  el.innerHTML=docs.map(d=>`<div class="tbl-row">
+    <div class="tbl-av amber">${(d.full_name||'D')[0].toUpperCase()}</div>
+    <div style="flex:1"><div class="tbl-name">${d.full_name||'-'}</div><div class="tbl-sub">${d.specialization||'N/A'} · ${d.email}</div></div>
+    <span class="tbl-badge pending">⏳ Pending</span>
+    <div class="tbl-actions" style="margin-left:8px;">
+      <button class="act-btn v" onclick="verifyDoctor('${d.id}')">✅ Verify</button>
+      <button class="act-btn e" onclick="viewDoctor('${d.id}')">View</button>
+      <button class="act-btn r" onclick="rejectDoctor('${d.id}')">Reject</button>
+    </div>
+  </div>`).join('');
+}
+
+function renderAllDoctors(docs){
+  const el=document.getElementById('allDrList');
+  if(!docs.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--ink-mute);font-size:13px;">No doctors yet</div>';return;}
+  el.innerHTML=`<div class="tbl-row tbl-hdr"><div style="width:36px;"></div><div style="flex:1;margin-left:12px;">Name</div><div class="tbl-col">Specialization</div><div class="tbl-col">Fee</div><div class="tbl-col">Status</div><div style="width:160px;">Actions</div></div>`+
+  docs.map(d=>`<div class="tbl-row">
+    <div class="tbl-av ${d.status==='verified'?'':'amber'}">${(d.full_name||'D')[0].toUpperCase()}</div>
+    <div style="flex:1"><div class="tbl-name">${d.full_name||'-'}</div><div class="tbl-sub">${d.doctor_id} · ${d.email}</div></div>
+    <div class="tbl-col">${d.specialization||'-'}</div>
+    <div class="tbl-col">${d.consultation_fee?'₹'+d.consultation_fee:'-'}</div>
+    <span class="tbl-badge ${d.status==='verified'?'verified':'pending'}">${d.status==='verified'?'✅ Verified':'⏳ Pending'}</span>
+    <div class="tbl-actions">
+      ${d.status!=='verified'?`<button class="act-btn v" onclick="verifyDoctor('${d.id}')">✅ Verify</button>`:''}
+      <button class="act-btn e" onclick="viewDoctor('${d.id}')">View</button>
+      <button class="act-btn r" onclick="rejectDoctor('${d.id}')">Remove</button>
+    </div>
+  </div>`).join('');
+}
+
+function renderPatients(pats){
+  const el=document.getElementById('allPatList');
+  if(!pats.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--ink-mute);font-size:13px;">No patients yet</div>';return;}
+  el.innerHTML=`<div class="tbl-row tbl-hdr"><div style="width:36px;"></div><div style="flex:1;margin-left:12px;">Name</div><div class="tbl-col">Phone</div><div class="tbl-col">Age</div><div class="tbl-col">Blood Group</div></div>`+
+  pats.map(p=>`<div class="tbl-row">
+    <div class="tbl-av">${(p.full_name||'P')[0].toUpperCase()}</div>
+    <div style="flex:1"><div class="tbl-name">${p.full_name||'Patient'}</div><div class="tbl-sub">Joined ${new Date(p.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div></div>
+    <div class="tbl-col">${p.phone||'-'}</div>
+    <div class="tbl-col">${p.age||'-'}</div>
+    <div class="tbl-col">${p.blood_group||'-'}</div>
+  </div>`).join('');
+}
+
+function viewDoctor(id){
+  viewingDrId=id;
+  const d=allDoctors.find(x=>x.id===id);
+  if(!d)return;
+  document.getElementById('vdName').textContent=d.full_name||'Doctor';
+  document.getElementById('vdVerifyBtn').style.display=d.status==='verified'?'none':'block';
+  document.getElementById('vdBody').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      ${[['Doctor ID',d.doctor_id],['Email',d.email],['Phone',d.phone||'-'],['Specialization',d.specialization||'-'],['Experience',d.experience_years?d.experience_years+' yrs':'-'],['Reg. No.',d.registration_number||'-'],['Hospital',d.hospital||'-'],['Fee',d.consultation_fee?'₹'+d.consultation_fee:'-'],['Status',d.status||'pending']].map(([l,v])=>`
+      <div style="background:var(--bg);border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;font-weight:700;color:var(--ink-mute);letter-spacing:.4px;margin-bottom:3px;">${l.toUpperCase()}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--ink);">${v}</div>
+      </div>`).join('')}
+    </div>
+    ${d.about?`<div style="background:var(--bg);border-radius:10px;padding:12px;font-size:13px;color:var(--ink-mid);">${d.about}</div>`:''}
+  `;
+  openModal('viewDrModal');
+}
+
+async function verifyDoctor(id){
+  await sb.from('doctors').update({status:'verified',verified_at:new Date().toISOString()}).eq('id',id);
+  showToast('✅ Doctor verified!');
+  await loadDoctors();
+}
+async function verifyDoctorFromView(){
+  if(viewingDrId) await verifyDoctor(viewingDrId);
+  closeModal('viewDrModal');
+}
+async function rejectDoctor(id){
+  if(!confirm('Is doctor ko remove karna chahte ho?'))return;
+  await sb.from('doctors').delete().eq('id',id);
+  showToast('🗑️ Doctor removed');
+  await loadDoctors();
+}
+
+async function addDoctor(){
+  const fn=document.getElementById('aFn').value.trim();
+  const ln=document.getElementById('aLn').value.trim();
+  const em=document.getElementById('aEm').value.trim();
+  const ph=document.getElementById('aPh').value.trim();
+  const sp=document.getElementById('aSp').value;
+  const ex=document.getElementById('aEx').value;
+  const fee=document.getElementById('aFee').value;
+  const rg=document.getElementById('aRg').value.trim();
+  const hosp=document.getElementById('aHosp').value.trim();
+  const about=document.getElementById('aAbout').value.trim();
+  const status=document.getElementById('aStatus').value;
+  if(!fn||!em||!sp){showToast('⚠️ Name, email aur specialization zaroori hai');return;}
+  document.getElementById('addDrBtn').disabled=true;
+  // Generate doctor ID
+  const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const did='DR-'+Array.from({length:5},()=>c[Math.floor(Math.random()*c.length)]).join('');
+  const {error}=await sb.from('doctors').insert({
+    doctor_id:did,email:em,full_name:(fn+' '+ln).trim(),phone:ph,
+    specialization:sp,experience_years:ex?parseInt(ex):null,
+    consultation_fee:fee?parseInt(fee):null,
+    registration_number:rg,hospital:hosp,about,
+    status,created_at:new Date().toISOString(),
+    verified_at:status==='verified'?new Date().toISOString():null
+  });
+  document.getElementById('addDrBtn').disabled=false;
+  if(error){showToast('❌ '+error.message);return;}
+  showToast(`✅ Doctor added! ID: ${did}`);
+  closeModal('addDrModal');
+  await loadDoctors();
+}
+
+function showTab(tab){
+  ['overview','doctors','patients','reports'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===tab?'block':'none';
+  });
+  document.querySelectorAll('.sb-item').forEach((el,i)=>{
+    el.classList.toggle('active',i===(['overview','doctors','patients','reports'].indexOf(tab)));
+  });
+}
+
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+async function logout(){await sb.auth.signOut();window.location.href='/auth';}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show');}));
+</script>
+</body>
+</html>
